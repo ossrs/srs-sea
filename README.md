@@ -15,9 +15,9 @@ Android SDK level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
 
 The workflow of the android publisher is:
 
-1 Setup the Camera preview, callback with the YUV(YV12) image frame.
-1 Setup the MediaCodec and MediaFormat, encode the YUV to h.264/avc in annexb.
-1 Remux the annexb to flv stream.
-1 HTTP POST the flv stream to SRS.
+1. Setup the Camera preview, callback with the YUV(YV12) image frame.
+1. Setup the MediaCodec and MediaFormat, encode the YUV to h.264/avc in annexb.
+1. Remux the annexb to flv stream.
+1. [Coming soon]HTTP POST the flv stream to SRS.
 
 Winlin 2015.5
