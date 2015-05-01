@@ -154,7 +154,7 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                camera = Camera.open();
+                camera = Camera.open(0);
                 Camera.Parameters parameters = camera.getParameters();
 
                 parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
@@ -184,21 +184,8 @@ public class MainActivity extends Activity {
                 parameters.setPreviewSize(size.width, size.height);
                 Log.i(TAG, String.format("set the preview size in %dx%d", size.width, size.height));
 
+                camera.setDisplayOrientation(90);
                 camera.setParameters(parameters);
-
-                // set the callback and start the preview.
-                buffer = new byte[getYuvBuffer(size.width, size.height)];
-                camera.addCallbackBuffer(buffer);
-                camera.setPreviewCallbackWithBuffer(onYuvFrame);
-                try {
-                    camera.setPreviewDisplay(preview.getHolder());
-                } catch (IOException e) {
-                    Log.e(TAG, "preview video failed.");
-                    e.printStackTrace();
-                    return;
-                }
-                Log.i(TAG, String.format("start to preview video in %dx%d, buffer %dB", size.width, size.height, buffer.length));
-                camera.startPreview();
 
                 // encoder yuv to 264 es stream.
                 // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
@@ -219,13 +206,37 @@ public class MainActivity extends Activity {
                 format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
                 format.setInteger(MediaFormat.KEY_COLOR_FORMAT, chooseColorFormat());
                 format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+                format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
                 encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                Log.i(TAG, "start avc encoder");
                 encoder.start();
-                Log.i(TAG, "encoder start");
+
+                // set the callback and start the preview.
+                buffer = new byte[getYuvBuffer(size.width, size.height)];
+                camera.addCallbackBuffer(buffer);
+                camera.setPreviewCallbackWithBuffer(onYuvFrame);
+                try {
+                    camera.setPreviewDisplay(preview.getHolder());
+                } catch (IOException e) {
+                    Log.e(TAG, "preview video failed.");
+                    e.printStackTrace();
+                    return;
+                }
+
+                Log.i(TAG, String.format("start to preview video in %dx%d, buffer %dB", size.width, size.height, buffer.length));
+                camera.startPreview();
 
                 btn.setEnabled(false);
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        final Button btn = (Button)findViewById(R.id.capture);
+        btn.setEnabled(true);
     }
 
     @Override
@@ -236,6 +247,7 @@ public class MainActivity extends Activity {
             Log.i(TAG, "stop encoder");
             encoder.stop();
             encoder.release();
+            encoder = null;
         }
 
         if (camera != null) {
@@ -243,6 +255,7 @@ public class MainActivity extends Activity {
             camera.setPreviewCallbackWithBuffer(null);
             camera.stopPreview();
             camera.release();
+            camera = null;
         }
     }
 
