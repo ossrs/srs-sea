@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
         MediaCodecInfo.CodecCapabilities cc = ci.getCapabilitiesForType(VCODEC);
         for (int i = 0; i < cc.colorFormats.length; i++) {
             int cf = cc.colorFormats[i];
-            //Log.i(TAG, String.format("encoder %s supports color fomart %d", ci.getName(), cf));
+            Log.i(TAG, String.format("encoder %s supports color fomart %d", ci.getName(), cf));
 
             // choose YUV for h.264, prefer the bigger one.
             if (cf >= cc.COLOR_FormatYUV411Planar && cf <= cc.COLOR_FormatYUV422SemiPlanar) {
