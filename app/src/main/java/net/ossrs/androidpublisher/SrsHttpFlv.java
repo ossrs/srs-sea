@@ -752,6 +752,10 @@ public class SrsHttpFlv {
             int avc_packet_type = SrsCodecVideoAVCType.NALU;
             SrsAnnexbFrame flv_tag = avc.mux_avc2flv(ibps, frame_type, avc_packet_type, dts, pts);
 
+            if (frame_type == SrsCodecVideoAVCFrame.KeyFrame) {
+                Log.i(TAG, String.format("flv: keyframe %dB, dts=%d", flv_tag.size, dts));
+            }
+
             // the timestamp in rtmp message header is dts.
             int timestamp = dts;
             rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, flv_tag);
