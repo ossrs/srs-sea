@@ -29,7 +29,7 @@ public class MainActivity extends Activity {
     private byte[] buffer;
     private long presentationTimeUs;
     private SrsHttpFlv muxer;
-    private int videoTracker;
+    private int videoTrack;
     //private static final String HTTP_FLV = "http://ossrs.net:8081/live/android.flv";
     //private static final String HTTP_FLV = "http://192.168.1.137:8080/live/android.flv";
     private static final String HTTP_FLV = "http://192.168.2.111:8080/live/android.flv";
@@ -107,7 +107,13 @@ public class MainActivity extends Activity {
         //    sb.append(String.format("0x%s ", Integer.toHexString(es.get(i) & 0xFF)));
         //}
         //Log.i(TAG, String.format("dumps the es stream:\n%s", sb.toString()));
-        muxer.writeSampleData(videoTracker, es, bi);
+
+        try {
+            muxer.writeSampleData(videoTrack, es, bi);
+        } catch (Exception e) {
+            Log.e(TAG, "muxer write sample failed.");
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -234,7 +240,8 @@ public class MainActivity extends Activity {
                 encoder.start();
 
                 // add the video tracker to muxer.
-                videoTracker = muxer.addTrack(format);
+                videoTrack = muxer.addTrack(format);
+                Log.i(TAG, String.format("muxer add video track index=%d", videoTrack));
 
                 // set the callback and start the preview.
                 buffer = new byte[getYuvBuffer(size.width, size.height)];
