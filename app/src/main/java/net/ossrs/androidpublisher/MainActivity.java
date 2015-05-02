@@ -29,6 +29,7 @@ public class MainActivity extends Activity {
     private byte[] buffer;
     private long presentationTimeUs;
     private SrsHttpFlv muxer;
+    private int videoTracker;
     //private static final String HTTP_FLV = "http://ossrs.net:8081/live/android.flv";
     //private static final String HTTP_FLV = "http://192.168.1.137:8080/live/android.flv";
     private static final String HTTP_FLV = "http://192.168.2.111:8080/live/android.flv";
@@ -106,7 +107,7 @@ public class MainActivity extends Activity {
         //    sb.append(String.format("0x%s ", Integer.toHexString(es.get(i) & 0xFF)));
         //}
         //Log.i(TAG, String.format("dumps the es stream:\n%s", sb.toString()));
-        muxer.sendAnnexbFrame(es, bi.size, bi.offset, bi.presentationTimeUs / 1000);
+        muxer.writeSampleData(videoTracker, es, bi);
     }
 
     @Override
@@ -198,15 +199,15 @@ public class MainActivity extends Activity {
                 camera.setParameters(parameters);
 
                 // start the muxer to POST stream to SRS over HTTP FLV.
-                muxer = new SrsHttpFlv(HTTP_FLV);
+                muxer = new SrsHttpFlv(HTTP_FLV, SrsHttpFlv.OutputFormat.MUXER_OUTPUT_HTTP_FLV);
                 try {
-                    muxer.connect();
+                    muxer.start();
                 } catch (IOException e) {
-                    Log.e(TAG, "connect muxer failed.");
+                    Log.e(TAG, "start muxer failed.");
                     e.printStackTrace();
                     return;
                 }
-                Log.i(TAG, String.format("connect muxer to SRS over HTTP FLV, url=%s", HTTP_FLV));
+                Log.i(TAG, String.format("start muxer to SRS over HTTP FLV, url=%s", HTTP_FLV));
 
                 // encoder yuv to 264 es stream.
                 // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
@@ -231,6 +232,9 @@ public class MainActivity extends Activity {
                 encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
                 Log.i(TAG, "start avc encoder");
                 encoder.start();
+
+                // add the video tracker to muxer.
+                videoTracker = muxer.addTrack(format);
 
                 // set the callback and start the preview.
                 buffer = new byte[getYuvBuffer(size.width, size.height)];
@@ -270,7 +274,8 @@ public class MainActivity extends Activity {
 
         if (muxer != null) {
             Log.i(TAG, "stop muxer to SRS over HTTP FLV");
-            muxer.close();
+            muxer.stop();
+            muxer.release();
             muxer = null;
         }
     }
