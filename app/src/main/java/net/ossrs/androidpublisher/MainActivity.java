@@ -20,7 +20,6 @@ import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.List;
 
-
 public class MainActivity extends Activity {
     private Camera camera;
     private Camera.Size vsize;
@@ -101,13 +100,6 @@ public class MainActivity extends Activity {
 
     // when got encoded h264 es stream.
     private void onEncodedAnnexbFrame(ByteBuffer es, MediaCodec.BufferInfo bi) {
-        //Log.i(TAG, String.format("encoded frame %dB, offset=%d pts=%dms", bi.size, bi.offset, bi.presentationTimeUs / 1000));
-        //StringBuilder sb = new StringBuilder();
-        //for (int i = 0; i < bi.size; i++) {
-        //    sb.append(String.format("0x%s ", Integer.toHexString(es.get(i) & 0xFF)));
-        //}
-        //Log.i(TAG, String.format("dumps the es stream:\n%s", sb.toString()));
-
         try {
             muxer.writeSampleData(videoTrack, es, bi);
         } catch (Exception e) {
