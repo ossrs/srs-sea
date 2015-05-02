@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 /**
  * Created by winlin on 5/2/15.
@@ -172,6 +173,65 @@ public class SrsHttpFlv {
         public final static int VideoInfoFrame                = 5;
     }
 
+    // AVCPacketType IF CodecID == 7 UI8
+    // The following values are defined:
+    //     0 = AVC sequence header
+    //     1 = AVC NALU
+    //     2 = AVC end of sequence (lower level NALU sequence ender is
+    //         not required or supported)
+    class SrsCodecVideoAVCType
+    {
+        // set to the max value to reserved, for array map.
+        public final static int Reserved                    = 3;
+
+        public final static int SequenceHeader                 = 0;
+        public final static int NALU                         = 1;
+        public final static int SequenceHeaderEOF             = 2;
+    }
+
+    /**
+     * E.4.1 FLV Tag, page 75
+     */
+    class SrsCodecFlvTag
+    {
+        // set to the zero to reserved, for array map.
+        public final static int Reserved = 0;
+
+        // 8 = audio
+        public final static int Audio = 8;
+        // 9 = video
+        public final static int Video = 9;
+        // 18 = script data
+        public final static int Script = 18;
+    };
+
+    // E.4.3.1 VIDEODATA
+    // CodecID UB [4]
+    // Codec Identifier. The following values are defined:
+    //     2 = Sorenson H.263
+    //     3 = Screen video
+    //     4 = On2 VP6
+    //     5 = On2 VP6 with alpha channel
+    //     6 = Screen video version 2
+    //     7 = AVC
+    class SrsCodecVideo
+    {
+        // set to the zero to reserved, for array map.
+        public final static int Reserved                = 0;
+        public final static int Reserved1                = 1;
+        public final static int Reserved2                = 9;
+
+        // for user to disable video, for example, use pure audio hls.
+        public final static int Disabled                = 8;
+
+        public final static int SorensonH263             = 2;
+        public final static int ScreenVideo             = 3;
+        public final static int On2VP6                 = 4;
+        public final static int On2VP6WithAlphaChannel = 5;
+        public final static int ScreenVideoVersion2     = 6;
+        public final static int AVC                     = 7;
+    }
+
     /**
      * Table 7-1 – NAL unit type codes, syntax element categories, and NAL unit type classes
      * H.264-AVC-ISO_IEC_14496-10-2012.pdf, page 83.
@@ -223,6 +283,24 @@ public class SrsHttpFlv {
     public class SrsUtils {
         private final static String TAG = "SrsMuxer";
 
+        public boolean srs_bytes_equals(byte[] a, byte[]b) {
+            if ((a == null || b == null) && (a != null || b != null)) {
+                return false;
+            }
+
+            if (a.length != b.length) {
+                return false;
+            }
+
+            for (int i = 0; i < a.length && i < b.length; i++) {
+                if (a[i] != b[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public SrsAnnexbSearch srs_avc_startswith_annexb(ByteBuffer bb, MediaCodec.BufferInfo bi) {
             SrsAnnexbSearch as = new SrsAnnexbSearch();
             as.match = false;
@@ -256,7 +334,8 @@ public class SrsHttpFlv {
             StringBuilder sb = new StringBuilder();
             int i = 0;
             int bytes_in_line = 16;
-            for (i = 0; i < size; i++) {
+            int max = bb.remaining();
+            for (i = 0; i < size && i < max; i++) {
                 sb.append(String.format("0x%s ", Integer.toHexString(bb.get(i) & 0xFF)));
                 if (((i + 1) % bytes_in_line) == 0) {
                     Log.i(TAG, String.format("%03d-%03d: %s", i / bytes_in_line * bytes_in_line, i, sb.toString()));
@@ -290,9 +369,201 @@ public class SrsHttpFlv {
      */
     class SrsRawH264Stream {
         private SrsUtils utils;
+        private final static String TAG = "SrsMuxer";
 
         public SrsRawH264Stream() {
             utils = new SrsUtils();
+        }
+
+        public boolean is_sps(SrsAnnexbFrame frame) {
+            if (frame.size < 1) {
+                return false;
+            }
+
+            // 5bits, 7.3.1 NAL unit syntax,
+            // H.264-AVC-ISO_IEC_14496-10.pdf, page 44.
+            //  7: SPS, 8: PPS, 5: I Frame, 1: P Frame
+            int nal_unit_type = (int)(frame.frame.get(0) & 0x1f);
+
+            return nal_unit_type == SrsAvcNaluType.SPS;
+        }
+
+        public boolean is_pps(SrsAnnexbFrame frame) {
+            if (frame.size < 1) {
+                return false;
+            }
+
+            // 5bits, 7.3.1 NAL unit syntax,
+            // H.264-AVC-ISO_IEC_14496-10.pdf, page 44.
+            //  7: SPS, 8: PPS, 5: I Frame, 1: P Frame
+            int nal_unit_type = (int)(frame.frame.get(0) & 0x1f);
+
+            return nal_unit_type == SrsAvcNaluType.PPS;
+        }
+
+        public SrsAnnexbFrame mux_ibp_frame(SrsAnnexbFrame frame) {
+            SrsAnnexbFrame nalu_header = new SrsAnnexbFrame();
+            nalu_header.size = 4;
+            nalu_header.frame = ByteBuffer.allocate(nalu_header.size);
+
+            // 5.3.4.2.1 Syntax, H.264-AVC-ISO_IEC_14496-15.pdf, page 16
+            // lengthSizeMinusOne, or NAL_unit_length, always use 4bytes size
+            int NAL_unit_length = frame.size;
+
+            // mux the avc NALU in "ISO Base Media File Format"
+            // from H.264-AVC-ISO_IEC_14496-15.pdf, page 20
+            // NALUnitLength
+            nalu_header.frame.putInt(NAL_unit_length);
+
+            // reset the buffer.
+            nalu_header.frame.rewind();
+
+            //Log.i(TAG, String.format("mux ibp frame %dB", frame.size));
+            //utils.srs_print_bytes(nalu_header.frame, 16);
+
+            return nalu_header;
+        }
+
+        public void mux_sequence_header(byte[] sps, byte[] pps, int dts, int pts, ArrayList<SrsAnnexbFrame> frames) {
+            // 5bytes sps/pps header:
+            //      configurationVersion, AVCProfileIndication, profile_compatibility,
+            //      AVCLevelIndication, lengthSizeMinusOne
+            // 3bytes size of sps:
+            //      numOfSequenceParameterSets, sequenceParameterSetLength(2B)
+            // Nbytes of sps.
+            //      sequenceParameterSetNALUnit
+            // 3bytes size of pps:
+            //      numOfPictureParameterSets, pictureParameterSetLength
+            // Nbytes of pps:
+            //      pictureParameterSetNALUnit
+
+            // decode the SPS:
+            // @see: 7.3.2.1.1, H.264-AVC-ISO_IEC_14496-10-2012.pdf, page 62
+            if (true) {
+                SrsAnnexbFrame hdr = new SrsAnnexbFrame();
+                hdr.size = 5;
+                hdr.frame = ByteBuffer.allocate(hdr.size);
+
+                // @see: Annex A Profiles and levels, H.264-AVC-ISO_IEC_14496-10.pdf, page 205
+                //      Baseline profile profile_idc is 66(0x42).
+                //      Main profile profile_idc is 77(0x4d).
+                //      Extended profile profile_idc is 88(0x58).
+                byte profile_idc = sps[1];
+                //u_int8_t constraint_set = frame[2];
+                byte level_idc = sps[3];
+
+                // generate the sps/pps header
+                // 5.3.4.2.1 Syntax, H.264-AVC-ISO_IEC_14496-15.pdf, page 16
+                // configurationVersion
+                hdr.frame.put((byte)0x01);
+                // AVCProfileIndication
+                hdr.frame.put(profile_idc);
+                // profile_compatibility
+                hdr.frame.put((byte)0x00);
+                // AVCLevelIndication
+                hdr.frame.put(level_idc);
+                // lengthSizeMinusOne, or NAL_unit_length, always use 4bytes size,
+                // so we always set it to 0x03.
+                hdr.frame.put((byte)0x03);
+
+                // reset the buffer.
+                hdr.frame.rewind();
+                frames.add(hdr);
+            }
+
+            // sps
+            if (true) {
+                SrsAnnexbFrame sps_hdr = new SrsAnnexbFrame();
+                sps_hdr.size = 3;
+                sps_hdr.frame = ByteBuffer.allocate(sps_hdr.size);
+
+                // 5.3.4.2.1 Syntax, H.264-AVC-ISO_IEC_14496-15.pdf, page 16
+                // numOfSequenceParameterSets, always 1
+                sps_hdr.frame.put((byte) 0x01);
+                // sequenceParameterSetLength
+                sps_hdr.frame.putShort((short)sps.length);
+
+                sps_hdr.frame.rewind();
+                frames.add(sps_hdr);
+
+                // sequenceParameterSetNALUnit
+                SrsAnnexbFrame sps_bb = new SrsAnnexbFrame();
+                sps_bb.size = sps.length;
+                sps_bb.frame = ByteBuffer.wrap(sps);
+                frames.add(sps_bb);
+            }
+
+            // pps
+            if (true) {
+                SrsAnnexbFrame pps_hdr = new SrsAnnexbFrame();
+                pps_hdr.size = 3;
+                pps_hdr.frame = ByteBuffer.allocate(pps_hdr.size);
+
+                // 5.3.4.2.1 Syntax, H.264-AVC-ISO_IEC_14496-15.pdf, page 16
+                // numOfPictureParameterSets, always 1
+                pps_hdr.frame.put((byte) 0x01);
+                // pictureParameterSetLength
+                pps_hdr.frame.putShort((short)pps.length);
+
+                pps_hdr.frame.rewind();
+                frames.add(pps_hdr);
+
+                // pictureParameterSetNALUnit
+                SrsAnnexbFrame pps_bb = new SrsAnnexbFrame();
+                pps_bb.size = pps.length;
+                pps_bb.frame = ByteBuffer.wrap(pps);
+                frames.add(pps_bb);
+            }
+        }
+
+        public SrsAnnexbFrame mux_avc2flv(ArrayList<SrsAnnexbFrame> frames, int frame_type, int avc_packet_type, int dts, int pts) {
+            SrsAnnexbFrame flv_tag = new SrsAnnexbFrame();
+
+            // for h264 in RTMP video payload, there is 5bytes header:
+            //      1bytes, FrameType | CodecID
+            //      1bytes, AVCPacketType
+            //      3bytes, CompositionTime, the cts.
+            // @see: E.4.3 Video Tags, video_file_format_spec_v10_1.pdf, page 78
+            flv_tag.size = 5;
+            for (int i = 0; i < frames.size(); i++) {
+                SrsAnnexbFrame frame = frames.get(i);
+                flv_tag.size += frame.size;
+            }
+            flv_tag.frame = ByteBuffer.allocate(flv_tag.size);
+
+            // @see: E.4.3 Video Tags, video_file_format_spec_v10_1.pdf, page 78
+            // Frame Type, Type of video frame.
+            // CodecID, Codec Identifier.
+            // set the rtmp header
+            flv_tag.frame.put((byte)((frame_type << 4) | SrsCodecVideo.AVC));
+
+            // AVCPacketType
+            flv_tag.frame.put((byte)avc_packet_type);
+
+            // CompositionTime
+            // pts = dts + cts, or
+            // cts = pts - dts.
+            // where cts is the header in rtmp video packet payload header.
+            int cts = pts - dts;
+            flv_tag.frame.put((byte)(cts >> 16));
+            flv_tag.frame.put((byte)(cts >> 8));
+            flv_tag.frame.put((byte)cts);
+
+            // h.264 raw data.
+            for (int i = 0; i < frames.size(); i++) {
+                SrsAnnexbFrame frame = frames.get(i);
+                byte[] frame_bytes = new byte[frame.size];
+                frame.frame.get(frame_bytes);
+                flv_tag.frame.put(frame_bytes);
+            }
+
+            // reset the buffer.
+            flv_tag.frame.rewind();
+
+            //Log.i(TAG, String.format("flv tag muxed, %dB", flv_tag.size));
+            //utils.srs_print_bytes(flv_tag.frame, 128);
+
+            return flv_tag;
         }
 
         public SrsAnnexbFrame annexb_demux(ByteBuffer bb, MediaCodec.BufferInfo bi) throws Exception {
@@ -343,11 +614,24 @@ public class SrsHttpFlv {
     class SrsFlv {
         private MediaFormat videoTrack;
         private MediaFormat audioTrack;
+        private SrsUtils utils;
 
         private SrsRawH264Stream avc;
+        private byte[] h264_sps;
+        private boolean h264_sps_changed;
+        private byte[] h264_pps;
+        private boolean h264_pps_changed;
+        private boolean h264_sps_pps_sent;
 
         public SrsFlv() {
+            utils = new SrsUtils();
+
             avc = new SrsRawH264Stream();
+            h264_sps = new byte[0];
+            h264_sps_changed = false;
+            h264_pps = new byte[0];
+            h264_pps_changed = false;
+            h264_sps_pps_sent = false;
         }
 
         public void setVideoTrack(MediaFormat format) {
@@ -362,7 +646,7 @@ public class SrsHttpFlv {
             int pts = (int)(bi.presentationTimeUs / 1000);
             int dts = (int)pts;
 
-            byte[] ibps = null;
+            ArrayList<SrsAnnexbFrame> ibps = new ArrayList<SrsAnnexbFrame>();
             int frame_type = SrsCodecVideoAVCFrame.InterFrame;
             //Log.i(TAG, String.format("video %d/%d bytes, offset=%d, position=%d, pts=%d", bb.remaining(), bi.size, bi.offset, bb.position(), pts));
 
@@ -374,27 +658,26 @@ public class SrsHttpFlv {
                 // H.264-AVC-ISO_IEC_14496-10.pdf, page 44.
                 //  7: SPS, 8: PPS, 5: I Frame, 1: P Frame
                 int nal_unit_type = (int)(frame.frame.get(0) & 0x1f);
-                Log.i(TAG, String.format("annexb demux %dB, pts=%d, frame=%dB, nalu=%d", bi.size, pts, frame.size, nal_unit_type));
+                if (nal_unit_type != SrsAvcNaluType.NonIDR) {
+                    Log.i(TAG, String.format("annexb demux %dB, pts=%d, frame=%dB, nalu=%d", bi.size, pts, frame.size, nal_unit_type));
+                }
 
-/*
                 // for IDR frame, the frame is keyframe.
-                if (nal_unit_type == SrsAvcNaluTypeIDR) {
-                    frame_type = SrsCodecVideoAVCFrameKeyFrame;
+                if (nal_unit_type == SrsAvcNaluType.IDR) {
+                    frame_type = SrsCodecVideoAVCFrame.KeyFrame;
                 }
 
                 // ignore the nalu type aud(9)
-                if (nal_unit_type == SrsAvcNaluTypeAccessUnitDelimiter) {
+                if (nal_unit_type == SrsAvcNaluType.AccessUnitDelimiter) {
                     continue;
                 }
 
                 // for sps
-                if (avc->is_sps(frame, frame_size)) {
-                    std::string sps;
-                    if ((ret = avc->sps_demux(frame, frame_size, sps)) != ERROR_SUCCESS) {
-                        return ret;
-                    }
+                if (avc.is_sps(frame)) {
+                    byte[] sps = new byte[frame.size];
+                    frame.frame.get(sps);
 
-                    if (h264_sps == sps) {
+                    if (utils.srs_bytes_equals(h264_sps, sps)) {
                         continue;
                     }
                     h264_sps_changed = true;
@@ -403,13 +686,11 @@ public class SrsHttpFlv {
                 }
 
                 // for pps
-                if (avc->is_pps(frame, frame_size)) {
-                    std::string pps;
-                    if ((ret = avc->pps_demux(frame, frame_size, pps)) != ERROR_SUCCESS) {
-                        return ret;
-                    }
+                if (avc.is_pps(frame)) {
+                    byte[] pps = new byte[frame.size];
+                    frame.frame.get(pps);
 
-                    if (h264_pps == pps) {
+                    if (utils.srs_bytes_equals(h264_pps, pps)) {
                         continue;
                     }
                     h264_pps_changed = true;
@@ -418,25 +699,65 @@ public class SrsHttpFlv {
                 }
 
                 // ibp frame.
-                std::string ibp;
-                if ((ret = avc->mux_ipb_frame(frame, frame_size, ibp)) != ERROR_SUCCESS) {
-                    return ret;
-                }
-                ibps.append(ibp);
+                SrsAnnexbFrame nalu_header = avc.mux_ibp_frame(frame);
+                ibps.add(nalu_header);
+                ibps.add(frame);
             }
 
-            if ((ret = write_h264_sps_pps(dts, pts)) != ERROR_SUCCESS) {
-                return ret;
+            write_h264_sps_pps(dts, pts);
+
+            write_h264_ipb_frame(ibps, frame_type, dts, pts);
+        }
+
+        private void write_h264_sps_pps(int dts, int pts) {
+            // when sps or pps changed, update the sequence header,
+            // for the pps maybe not changed while sps changed.
+            // so, we must check when each video ts message frame parsed.
+            if (h264_sps_pps_sent && !h264_sps_changed && !h264_pps_changed) {
+                return;
             }
 
-            if ((ret = write_h264_ipb_frame(ibps, frame_type, dts, pts)) != ERROR_SUCCESS) {
-                // drop the ts message.
-                if (ret == ERROR_H264_DROP_BEFORE_SPS_PPS) {
-                    return ERROR_SUCCESS;
-                }
-                return ret;
-*/
+            // when not got sps/pps, wait.
+            if (h264_pps.length <= 0 || h264_sps.length <= 0) {
+                return;
             }
+
+            // h264 raw to h264 packet.
+            ArrayList<SrsAnnexbFrame> frames = new ArrayList<SrsAnnexbFrame>();
+            avc.mux_sequence_header(h264_sps, h264_pps, dts, pts, frames);
+
+            // h264 packet to flv packet.
+            int frame_type = SrsCodecVideoAVCFrame.KeyFrame;
+            int avc_packet_type = SrsCodecVideoAVCType.SequenceHeader;
+            SrsAnnexbFrame flv_tag = avc.mux_avc2flv(frames, frame_type, avc_packet_type, dts, pts);
+
+            // the timestamp in rtmp message header is dts.
+            int timestamp = dts;
+            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, flv_tag);
+
+            // reset sps and pps.
+            h264_sps_changed = false;
+            h264_pps_changed = false;
+            h264_sps_pps_sent = true;
+            Log.i(TAG, String.format("flv: h264 sps/pps sent, sps=%dB, pps=%dB", h264_sps.length, h264_pps.length));
+        }
+
+        private void write_h264_ipb_frame(ArrayList<SrsAnnexbFrame> ibps, int frame_type, int dts, int pts) {
+            // when sps or pps not sent, ignore the packet.
+            // @see https://github.com/simple-rtmp-server/srs/issues/203
+            if (!h264_sps_pps_sent) {
+                return;
+            }
+
+            int avc_packet_type = SrsCodecVideoAVCType.NALU;
+            SrsAnnexbFrame flv_tag = avc.mux_avc2flv(ibps, frame_type, avc_packet_type, dts, pts);
+
+            // the timestamp in rtmp message header is dts.
+            int timestamp = dts;
+            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, flv_tag);
+        }
+
+        private void rtmp_write_packet(int type, int dts, SrsAnnexbFrame tag) {
         }
     }
 }
