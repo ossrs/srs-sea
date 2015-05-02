@@ -28,10 +28,17 @@ public class MainActivity extends Activity {
     private MediaCodec.BufferInfo ebi;
     private byte[] buffer;
     private long presentationTimeUs;
+    private SrsHttpFlv muxer;
+    //private static final String HTTP_FLV = "http://ossrs.net:8081/live/android.flv";
+    //private static final String HTTP_FLV = "http://192.168.1.137:8080/live/android.flv";
+    private static final String HTTP_FLV = "http://192.168.2.111:8080/live/android.flv";
     private static final String TAG = "SrsPublisher";
     private static final String VCODEC = "video/avc";
 
     public MainActivity() {
+        camera = null;
+        encoder = null;
+        muxer = null;
     }
 
     // for the buffer for YV12(android YUV), @see below:
@@ -92,13 +99,14 @@ public class MainActivity extends Activity {
     }
 
     // when got encoded h264 es stream.
-    private void onEncodedFrame(ByteBuffer es, MediaCodec.BufferInfo bi) {
-        Log.i(TAG, String.format("encoded frame %dB, offset=%d pts=%dms", bi.size, bi.offset, bi.presentationTimeUs / 1000));
+    private void onEncodedAnnexbFrame(ByteBuffer es, MediaCodec.BufferInfo bi) {
+        //Log.i(TAG, String.format("encoded frame %dB, offset=%d pts=%dms", bi.size, bi.offset, bi.presentationTimeUs / 1000));
         //StringBuilder sb = new StringBuilder();
         //for (int i = 0; i < bi.size; i++) {
         //    sb.append(String.format("0x%s ", Integer.toHexString(es.get(i) & 0xFF)));
         //}
         //Log.i(TAG, String.format("dumps the es stream:\n%s", sb.toString()));
+        muxer.sendAnnexbFrame(es, bi.size, bi.offset, bi.presentationTimeUs / 1000);
     }
 
     @Override
@@ -133,7 +141,7 @@ public class MainActivity extends Activity {
                         //Log.i(TAG, String.format("try to dequeue output buffer, ii=%d, oi=%d", inBufferIndex, outBufferIndex));
                         if (outBufferIndex >= 0) {
                             ByteBuffer bb = outBuffers[outBufferIndex];
-                            onEncodedFrame(bb, ebi);
+                            onEncodedAnnexbFrame(bb, ebi);
                             encoder.releaseOutputBuffer(outBufferIndex, false);
                         }
 
@@ -154,6 +162,8 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                dispose();
+
                 camera = Camera.open(0);
                 Camera.Parameters parameters = camera.getParameters();
 
@@ -186,6 +196,17 @@ public class MainActivity extends Activity {
 
                 camera.setDisplayOrientation(90);
                 camera.setParameters(parameters);
+
+                // start the muxer to POST stream to SRS over HTTP FLV.
+                muxer = new SrsHttpFlv(HTTP_FLV);
+                try {
+                    muxer.connect();
+                } catch (IOException e) {
+                    Log.e(TAG, "connect muxer failed.");
+                    e.printStackTrace();
+                    return;
+                }
+                Log.i(TAG, String.format("connect muxer to SRS over HTTP FLV, url=%s", HTTP_FLV));
 
                 // encoder yuv to 264 es stream.
                 // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
@@ -231,6 +252,29 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void dispose() {
+        if (camera != null) {
+            Log.i(TAG, "stop preview");
+            camera.setPreviewCallbackWithBuffer(null);
+            camera.stopPreview();
+            camera.release();
+            camera = null;
+        }
+
+        if (encoder != null) {
+            Log.i(TAG, "stop encoder");
+            encoder.stop();
+            encoder.release();
+            encoder = null;
+        }
+
+        if (muxer != null) {
+            Log.i(TAG, "stop muxer to SRS over HTTP FLV");
+            muxer.close();
+            muxer = null;
+        }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -242,21 +286,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-
-        if (encoder != null) {
-            Log.i(TAG, "stop encoder");
-            encoder.stop();
-            encoder.release();
-            encoder = null;
-        }
-
-        if (camera != null) {
-            Log.i(TAG, "stop preview");
-            camera.setPreviewCallbackWithBuffer(null);
-            camera.stopPreview();
-            camera.release();
-            camera = null;
-        }
+        dispose();
     }
 
     @Override
