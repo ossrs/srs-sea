@@ -45,7 +45,9 @@
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
               <caret line="96" column="74" selection-start-line="96" selection-start-column="74" selection-end-line="96" selection-end-column="74" />
-              <folding />
+              <folding>
+                <element signature="imports" expanded="false" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -53,28 +55,26 @@
       <file leaf-file-name="SrsHttpFlv.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/app/src/main/java/net/ossrs/androidpublisher/SrsHttpFlv.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.83588624">
-              <caret line="848" column="0" selection-start-line="848" selection-start-column="0" selection-end-line="848" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.8488665">
+              <caret line="128" column="43" selection-start-line="128" selection-start-column="43" selection-end-line="128" selection-end-column="43" />
               <folding>
                 <element signature="imports" expanded="true" />
-                <element signature="e#1994#2343#0" expanded="true" />
-                <element signature="e#2342#2343#0" expanded="true" />
-                <element signature="e#2598#2599#0" expanded="true" />
-                <element signature="e#2620#2621#0" expanded="true" />
+                <element signature="e#1994#2351#0" expanded="true" />
+                <element signature="e#2350#2351#0" expanded="true" />
+                <element signature="e#2606#2607#0" expanded="true" />
+                <element signature="e#2628#2629#0" expanded="true" />
                 <element signature="method#srs_avc_startswith_annexb#0;class#SrsUtils#0;class#SrsHttpFlv#0" expanded="false" />
                 <element signature="class#SrsAnnexbSearch#0;class#SrsHttpFlv#0" expanded="false" />
-                <element signature="e#14338#14339#0" expanded="true" />
-                <element signature="e#14384#14385#0" expanded="true" />
+                <element signature="e#15437#15438#0" expanded="true" />
+                <element signature="e#15483#15484#0" expanded="true" />
                 <element signature="method#is_sps#0;class#SrsRawH264Stream#0;class#SrsHttpFlv#0" expanded="false" />
                 <element signature="method#annexb_demux#0;class#SrsRawH264Stream#0;class#SrsHttpFlv#0" expanded="false" />
-                <element signature="e#24596#24597#0" expanded="true" />
-                <element signature="e#24631#24632#0" expanded="true" />
-                <element signature="e#24688#24689#0" expanded="true" />
-                <element signature="e#24731#24732#0" expanded="true" />
-                <element signature="e#24788#24789#0" expanded="true" />
-                <element signature="e#24831#24832#0" expanded="true" />
-                <element signature="e#25087#25103#0" expanded="true" />
-                <element signature="e#28095#28111#0" expanded="true" />
+                <element signature="e#25910#25911#0" expanded="true" />
+                <element signature="e#25945#25946#0" expanded="true" />
+                <element signature="e#26002#26003#0" expanded="true" />
+                <element signature="e#26045#26046#0" expanded="true" />
+                <element signature="e#26102#26103#0" expanded="true" />
+                <element signature="e#26145#26146#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -963,6 +963,8 @@
     </navigator>
     <panes>
       <pane id="Scope" />
+      <pane id="ProjectPane" />
+      <pane id="Scratches" />
       <pane id="PackagesPane" />
       <pane id="AndroidView">
         <subPane>
@@ -1052,8 +1054,6 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="ProjectPane" />
-      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -1262,7 +1262,7 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1440" height="900" extended-state="0" />
-    <editor active="true" />
+    <editor active="false" />
     <layout>
       <window_info id="Palette&#9;" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Designer" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -1275,7 +1275,7 @@
       <window_info id="Build Variants" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Gradle Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3287841" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Android" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.39826304" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Android" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.4727047" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Gradle" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -1327,7 +1327,53 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="96" column="74" selection-start-line="96" selection-start-column="74" selection-end-line="96" selection-end-column="74" />
+          <folding>
+            <element signature="imports" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/app/src/main/java/net/ossrs/androidpublisher/SrsHttpFlv.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="imports" expanded="true" />
+            <element signature="e#1994#2351#0" expanded="true" />
+            <element signature="e#2350#2351#0" expanded="true" />
+            <element signature="e#2606#2607#0" expanded="true" />
+            <element signature="e#2628#2629#0" expanded="true" />
+            <element signature="method#srs_avc_startswith_annexb#0;class#SrsUtils#0;class#SrsHttpFlv#0" expanded="false" />
+            <element signature="class#SrsAnnexbSearch#0;class#SrsHttpFlv#0" expanded="false" />
+            <element signature="e#15437#15438#0" expanded="true" />
+            <element signature="e#15483#15484#0" expanded="true" />
+            <element signature="method#is_sps#0;class#SrsRawH264Stream#0;class#SrsHttpFlv#0" expanded="false" />
+            <element signature="method#annexb_demux#0;class#SrsRawH264Stream#0;class#SrsHttpFlv#0" expanded="false" />
+            <element signature="e#25910#25911#0" expanded="true" />
+            <element signature="e#25945#25946#0" expanded="true" />
+            <element signature="e#26002#26003#0" expanded="true" />
+            <element signature="e#26045#26046#0" expanded="true" />
+            <element signature="e#26102#26103#0" expanded="true" />
+            <element signature="e#26145#26146#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/app/src/main/AndroidManifest.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="19" column="0" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/app/src/main/java/net/ossrs/androidpublisher/MainActivity.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="96" column="74" selection-start-line="96" selection-start-column="74" selection-end-line="96" selection-end-column="74" />
+          <folding>
+            <element signature="imports" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -1337,24 +1383,22 @@
           <caret line="765" column="9" selection-start-line="765" selection-start-column="9" selection-end-line="765" selection-end-column="9" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#1994#2343#0" expanded="true" />
-            <element signature="e#2342#2343#0" expanded="true" />
-            <element signature="e#2598#2599#0" expanded="true" />
-            <element signature="e#2620#2621#0" expanded="true" />
+            <element signature="e#1994#2351#0" expanded="true" />
+            <element signature="e#2350#2351#0" expanded="true" />
+            <element signature="e#2606#2607#0" expanded="true" />
+            <element signature="e#2628#2629#0" expanded="true" />
             <element signature="method#srs_avc_startswith_annexb#0;class#SrsUtils#0;class#SrsHttpFlv#0" expanded="false" />
             <element signature="class#SrsAnnexbSearch#0;class#SrsHttpFlv#0" expanded="false" />
-            <element signature="e#14338#14339#0" expanded="true" />
-            <element signature="e#14384#14385#0" expanded="true" />
+            <element signature="e#15437#15438#0" expanded="true" />
+            <element signature="e#15483#15484#0" expanded="true" />
             <element signature="method#is_sps#0;class#SrsRawH264Stream#0;class#SrsHttpFlv#0" expanded="false" />
             <element signature="method#annexb_demux#0;class#SrsRawH264Stream#0;class#SrsHttpFlv#0" expanded="false" />
-            <element signature="e#24596#24597#0" expanded="true" />
-            <element signature="e#24631#24632#0" expanded="true" />
-            <element signature="e#24688#24689#0" expanded="true" />
-            <element signature="e#24731#24732#0" expanded="true" />
-            <element signature="e#24788#24789#0" expanded="true" />
-            <element signature="e#24831#24832#0" expanded="true" />
-            <element signature="e#25087#25103#0" expanded="true" />
-            <element signature="e#28095#28111#0" expanded="true" />
+            <element signature="e#25910#25911#0" expanded="true" />
+            <element signature="e#25945#25946#0" expanded="true" />
+            <element signature="e#26002#26003#0" expanded="true" />
+            <element signature="e#26045#26046#0" expanded="true" />
+            <element signature="e#26102#26103#0" expanded="true" />
+            <element signature="e#26145#26146#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1371,7 +1415,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="imports" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -1387,7 +1433,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="imports" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -1403,7 +1451,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="imports" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -1418,7 +1468,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="3132" column="20" selection-start-line="3132" selection-start-column="20" selection-end-line="3132" selection-end-column="20" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1487,10 +1536,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.33333334">
           <caret line="214" column="16" selection-start-line="214" selection-start-column="16" selection-end-line="214" selection-end-column="16" />
-          <folding>
-            <element signature="e#7548#7549#0" expanded="false" />
-            <element signature="e#7582#7583#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1498,7 +1543,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.33333334">
           <caret line="54" column="14" selection-start-line="54" selection-start-column="14" selection-end-line="54" selection-end-column="14" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1506,34 +1550,34 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="96" column="74" selection-start-line="96" selection-start-column="74" selection-end-line="96" selection-end-column="74" />
-          <folding />
+          <folding>
+            <element signature="imports" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/app/src/main/java/net/ossrs/androidpublisher/SrsHttpFlv.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.83588624">
-          <caret line="848" column="0" selection-start-line="848" selection-start-column="0" selection-end-line="848" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.8488665">
+          <caret line="128" column="43" selection-start-line="128" selection-start-column="43" selection-end-line="128" selection-end-column="43" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#1994#2343#0" expanded="true" />
-            <element signature="e#2342#2343#0" expanded="true" />
-            <element signature="e#2598#2599#0" expanded="true" />
-            <element signature="e#2620#2621#0" expanded="true" />
+            <element signature="e#1994#2351#0" expanded="true" />
+            <element signature="e#2350#2351#0" expanded="true" />
+            <element signature="e#2606#2607#0" expanded="true" />
+            <element signature="e#2628#2629#0" expanded="true" />
             <element signature="method#srs_avc_startswith_annexb#0;class#SrsUtils#0;class#SrsHttpFlv#0" expanded="false" />
             <element signature="class#SrsAnnexbSearch#0;class#SrsHttpFlv#0" expanded="false" />
-            <element signature="e#14338#14339#0" expanded="true" />
-            <element signature="e#14384#14385#0" expanded="true" />
+            <element signature="e#15437#15438#0" expanded="true" />
+            <element signature="e#15483#15484#0" expanded="true" />
             <element signature="method#is_sps#0;class#SrsRawH264Stream#0;class#SrsHttpFlv#0" expanded="false" />
             <element signature="method#annexb_demux#0;class#SrsRawH264Stream#0;class#SrsHttpFlv#0" expanded="false" />
-            <element signature="e#24596#24597#0" expanded="true" />
-            <element signature="e#24631#24632#0" expanded="true" />
-            <element signature="e#24688#24689#0" expanded="true" />
-            <element signature="e#24731#24732#0" expanded="true" />
-            <element signature="e#24788#24789#0" expanded="true" />
-            <element signature="e#24831#24832#0" expanded="true" />
-            <element signature="e#25087#25103#0" expanded="true" />
-            <element signature="e#28095#28111#0" expanded="true" />
+            <element signature="e#25910#25911#0" expanded="true" />
+            <element signature="e#25945#25946#0" expanded="true" />
+            <element signature="e#26002#26003#0" expanded="true" />
+            <element signature="e#26045#26046#0" expanded="true" />
+            <element signature="e#26102#26103#0" expanded="true" />
+            <element signature="e#26145#26146#0" expanded="true" />
           </folding>
         </state>
       </provider>

@@ -73,7 +73,7 @@ public class SrsHttpFlv {
                     cycle();
                 } catch (InterruptedException ie) {
                 } catch (Exception e) {
-                    Log.i(TAG, "thread exception.");
+                    Log.i(TAG, "worker: thread exception.");
                     e.printStackTrace();
                 }
             }
@@ -107,7 +107,7 @@ public class SrsHttpFlv {
             try {
                 worker.join();
             } catch (InterruptedException e) {
-                Log.i(TAG, "join thread failed.");
+                Log.i(TAG, "worker: join thread failed.");
                 e.printStackTrace();
                 worker.stop();
             }
@@ -117,7 +117,7 @@ public class SrsHttpFlv {
             conn.disconnect();
             conn = null;
         }
-        Log.i(TAG, String.format("muxer closed, url=%s", url));
+        Log.i(TAG, String.format("worker: muxer closed, url=%s", url));
     }
 
     /**
@@ -156,26 +156,48 @@ public class SrsHttpFlv {
                     return;
                 }
                 SrsFlvFrame frame = (SrsFlvFrame)msg.obj;
-                sendFlvTag(bos, frame);
+                try {
+                    sendFlvTag(bos, frame);
+                } catch (IOException e) {
+                    Log.e(TAG, "worker: send flv tag failed.");
+                    e.printStackTrace();
+                    return;
+                }
             }
         };
         flv.setHandler(handler);
 
-        Log.i(TAG, String.format("connect to SRS."));
+        Log.i(TAG, String.format("worker: connect to SRS by url=%s", url));
         conn.setDoOutput(true);
         conn.setChunkedStreamingMode(0);
         bos = new BufferedOutputStream(conn.getOutputStream());
-        Log.i(TAG, String.format("muxer opened, url=%s", url));
+        Log.i(TAG, String.format("worker: muxer opened, url=%s", url));
+
+        // write 13B header
+        // 9bytes header and 4bytes first previous-tag-size
+        byte[] flv_header = new byte[] {
+            'F', 'L', 'V', // Signatures "FLV"
+            (byte)0x01, // File version (for example, 0x01 for FLV version 1)
+            (byte)0x00, // 4, audio; 1, video; 5 audio+video.
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x09, // DataOffset UI32 The length of this header in bytes
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
+        };
+        bos.write(flv_header);
+        Log.i(TAG, String.format("worker: flv header ok."));
 
         Looper.loop();
     }
 
-    private void sendFlvTag(BufferedOutputStream bos, SrsFlvFrame frame) {
+    private void sendFlvTag(BufferedOutputStream bos, SrsFlvFrame frame) throws IOException {
         if (frame.frame_type == SrsCodecVideoAVCFrame.KeyFrame) {
             Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
         } else {
             //Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
         }
+
+        byte[] data = frame.tag.frame.array();
+        bos.write(data, 0, frame.tag.size);
+        Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
     }
 
     /**
@@ -583,6 +605,9 @@ public class SrsHttpFlv {
                 SrsAnnexbFrame frame = frames.get(i);
                 flv_tag.size += frame.size;
             }
+            // @remark, we append the tag size, this is different to SRS which write RTMP packet.
+            flv_tag.size += 4;
+
             flv_tag.frame = ByteBuffer.allocate(flv_tag.size);
 
             // @see: E.4.3 Video Tags, video_file_format_spec_v10_1.pdf, page 78
@@ -610,6 +635,9 @@ public class SrsHttpFlv {
                 frame.frame.get(frame_bytes);
                 flv_tag.frame.put(frame_bytes);
             }
+
+            // tag size.
+            flv_tag.frame.putInt((int)(flv_tag.size - 4));
 
             // reset the buffer.
             flv_tag.frame.rewind();
