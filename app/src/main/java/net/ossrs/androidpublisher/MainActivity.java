@@ -13,6 +13,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 
 import java.io.IOException;
@@ -29,9 +30,9 @@ public class MainActivity extends Activity {
     private long presentationTimeUs;
     private SrsHttpFlv muxer;
     private int videoTrack;
-    //private static final String HTTP_FLV = "http://ossrs.net:8081/live/android.flv";
-    //private static final String HTTP_FLV = "http://192.168.1.137:8080/live/android.flv";
-    private static final String HTTP_FLV = "http://192.168.2.111:8080/live/android.flv";
+    //private static final String HTTP_FLV = "http://ossrs.net:8936/live/android.flv";
+    //private static final String HTTP_FLV = "http://192.168.1.137:8936/live/android.flv";
+    private static final String HTTP_FLV = "http://192.168.2.111:8936/live/android.flv";
     private static final String TAG = "SrsPublisher";
     private static final String VCODEC = "video/avc";
 
@@ -111,6 +112,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
 
         // when got YUV frame from camera.
