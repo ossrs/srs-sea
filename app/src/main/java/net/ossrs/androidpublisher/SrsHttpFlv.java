@@ -13,7 +13,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Queue;
 
 /**
  * Created by winlin on 5/2/15.
@@ -31,6 +30,8 @@ public class SrsHttpFlv {
     private Handler handler;
 
     private SrsFlv flv;
+    private SrsFlvFrame videoSequenceHeader;
+
     private static final int VIDEO_TRACK = 100;
     private static final int AUDIO_TRACK = 101;
     private static final String TAG = "SrsMuxer";
@@ -66,6 +67,7 @@ public class SrsHttpFlv {
     public void start() throws IOException {
         URL u = new URL(url);
         conn = (HttpURLConnection)u.openConnection();
+
         worker = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -144,6 +146,58 @@ public class SrsHttpFlv {
         // TODO: FIMXE: support audio.
     }
 
+    private void disconnect() {
+        if (bos == null && conn == null) {
+            return;
+        }
+
+        if (bos != null) {
+            try {
+                bos.close();
+            } catch (IOException e) {
+            }
+            bos = null;
+        }
+
+        if (conn != null) {
+            conn.disconnect();
+            conn = null;
+        }
+        Log.i(TAG, "worker: disconnect SRS ok.");
+    }
+
+    private void reconnect() throws Exception {
+        // when bos not null, already connected.
+        if (bos != null) {
+            return;
+        }
+
+        disconnect();
+
+        URL u = new URL(url);
+        conn = (HttpURLConnection)u.openConnection();
+
+        Log.i(TAG, String.format("worker: connect to SRS by url=%s", url));
+        conn.setDoOutput(true);
+        conn.setChunkedStreamingMode(0);
+        bos = new BufferedOutputStream(conn.getOutputStream());
+        Log.i(TAG, String.format("worker: muxer opened, url=%s", url));
+
+        // write 13B header
+        // 9bytes header and 4bytes first previous-tag-size
+        byte[] flv_header = new byte[]{
+                'F', 'L', 'V', // Signatures "FLV"
+                (byte) 0x01, // File version (for example, 0x01 for FLV version 1)
+                (byte) 0x00, // 4, audio; 1, video; 5 audio+video.
+                (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x09, // DataOffset UI32 The length of this header in bytes
+                (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00
+        };
+        bos.write(flv_header);
+        Log.i(TAG, String.format("worker: flv header ok."));
+
+        sendFlvTag(bos, videoSequenceHeader);
+    }
+
     private void cycle() throws Exception {
         // create the handler.
         Looper.prepare();
@@ -157,33 +211,16 @@ public class SrsHttpFlv {
                 }
                 SrsFlvFrame frame = (SrsFlvFrame)msg.obj;
                 try {
+                    reconnect();
                     sendFlvTag(bos, frame);
-                } catch (IOException e) {
-                    Log.e(TAG, "worker: send flv tag failed.");
-                    e.printStackTrace();
+                } catch (Exception e) {
+                    disconnect();
+                    Log.e(TAG, String.format("worker: send flv tag failed, e=%s", e.getMessage()));
                     return;
                 }
             }
         };
         flv.setHandler(handler);
-
-        Log.i(TAG, String.format("worker: connect to SRS by url=%s", url));
-        conn.setDoOutput(true);
-        conn.setChunkedStreamingMode(0);
-        bos = new BufferedOutputStream(conn.getOutputStream());
-        Log.i(TAG, String.format("worker: muxer opened, url=%s", url));
-
-        // write 13B header
-        // 9bytes header and 4bytes first previous-tag-size
-        byte[] flv_header = new byte[] {
-            'F', 'L', 'V', // Signatures "FLV"
-            (byte)0x01, // File version (for example, 0x01 for FLV version 1)
-            (byte)0x00, // 4, audio; 1, video; 5 audio+video.
-            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x09, // DataOffset UI32 The length of this header in bytes
-            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
-        };
-        bos.write(flv_header);
-        Log.i(TAG, String.format("worker: flv header ok."));
 
         Looper.loop();
     }
@@ -195,9 +232,16 @@ public class SrsHttpFlv {
             //Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
         }
 
-        byte[] data = frame.tag.frame.array();
-        bos.write(data, 0, frame.tag.size);
-        Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+        // cache the sequence header.
+        if (frame.type == SrsCodecFlvTag.Video && frame.avc_aac_type == SrsCodecVideoAVCType.SequenceHeader) {
+            videoSequenceHeader = frame;
+        }
+
+        if (bos != null) {
+            byte[] data = frame.tag.frame.array();
+            bos.write(data, 0, frame.tag.size);
+            Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+        }
     }
 
     /**
@@ -432,6 +476,8 @@ public class SrsHttpFlv {
     class SrsFlvFrame {
         // the tag bytes.
         public SrsAnnexbFrame tag;
+        // the codec type for audio/aac and video/avc for instance.
+        public int avc_aac_type;
         // the frame type, keyframe or not.
         public int frame_type;
         // the tag type, audio, video or data.
@@ -824,7 +870,7 @@ public class SrsHttpFlv {
 
             // the timestamp in rtmp message header is dts.
             int timestamp = dts;
-            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, frame_type, flv_tag);
+            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, frame_type, avc_packet_type, flv_tag);
 
             // reset sps and pps.
             h264_sps_changed = false;
@@ -849,15 +895,16 @@ public class SrsHttpFlv {
 
             // the timestamp in rtmp message header is dts.
             int timestamp = dts;
-            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, frame_type, flv_tag);
+            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, frame_type, avc_packet_type, flv_tag);
         }
 
-        private void rtmp_write_packet(int type, int dts, int frame_type, SrsAnnexbFrame tag) {
+        private void rtmp_write_packet(int type, int dts, int frame_type, int avc_aac_type, SrsAnnexbFrame tag) {
             SrsFlvFrame frame = new SrsFlvFrame();
             frame.tag = tag;
             frame.type = type;
             frame.dts = dts;
             frame.frame_type = frame_type;
+            frame.avc_aac_type = avc_aac_type;
 
             // use handler to send the message.
             // TODO: FIXME: we must wait for the handler to ready, for the sps/pps cannot be dropped.
