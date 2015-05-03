@@ -211,7 +211,12 @@ public class SrsHttpFlv {
                 }
                 SrsFlvFrame frame = (SrsFlvFrame)msg.obj;
                 try {
-                    reconnect();
+                    // only reconnect when got keyframe.
+                    if (frame.frame_type == SrsCodecVideoAVCFrame.KeyFrame) {
+                        reconnect();
+                    }
+
+                    // try to send, igore when not connected.
                     sendFlvTag(bos, frame);
                 } catch (Exception e) {
                     disconnect();
