@@ -2,6 +2,9 @@ package net.ossrs.androidpublisher;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 
 import java.io.BufferedOutputStream;
@@ -10,6 +13,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Queue;
 
 /**
  * Created by winlin on 5/2/15.
@@ -21,7 +25,11 @@ public class SrsHttpFlv {
     private String url;
     private HttpURLConnection conn;
     private BufferedOutputStream bos;
+
     private Thread worker;
+    private Looper looper;
+    private Handler handler;
+
     private SrsFlv flv;
     private static final int VIDEO_TRACK = 100;
     private static final int AUDIO_TRACK = 101;
@@ -90,6 +98,10 @@ public class SrsHttpFlv {
             return;
         }
 
+        if (looper != null) {
+            looper.quit();
+        }
+
         if (worker != null) {
             worker.interrupt();
             try {
@@ -133,15 +145,36 @@ public class SrsHttpFlv {
     }
 
     private void cycle() throws Exception {
-        Log.i(TAG, String.format("muxer opened, url=%s", url));
+        // create the handler.
+        Looper.prepare();
+        looper = Looper.myLooper();
+        handler = new Handler(looper) {
+            @Override
+            public void handleMessage(Message msg) {
+                if (msg.what != SrsMessageType.FLV) {
+                    Log.w(TAG, String.format("worker: drop unkown message, what=%d", msg.what));
+                    return;
+                }
+                SrsFlvFrame frame = (SrsFlvFrame)msg.obj;
+                sendFlvTag(bos, frame);
+            }
+        };
+        flv.setHandler(handler);
+
+        Log.i(TAG, String.format("connect to SRS."));
         conn.setDoOutput(true);
         conn.setChunkedStreamingMode(0);
         bos = new BufferedOutputStream(conn.getOutputStream());
+        Log.i(TAG, String.format("muxer opened, url=%s", url));
 
-        while (!Thread.interrupted()) {
-            // TODO: FIXME: implements it.
-            Thread.sleep(1000, 0);
-            //Log.i(TAG, String.format("worker thread pump message"));
+        Looper.loop();
+    }
+
+    private void sendFlvTag(BufferedOutputStream bos, SrsFlvFrame frame) {
+        if (frame.frame_type == SrsCodecVideoAVCFrame.KeyFrame) {
+            Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+        } else {
+            //Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
         }
     }
 
@@ -230,6 +263,13 @@ public class SrsHttpFlv {
         public final static int On2VP6WithAlphaChannel = 5;
         public final static int ScreenVideoVersion2     = 6;
         public final static int AVC                     = 7;
+    }
+
+    /**
+     * the type of message to process.
+     */
+    class SrsMessageType {
+        public final static int FLV = 0x100;
     }
 
     /**
@@ -362,6 +402,20 @@ public class SrsHttpFlv {
     class SrsAnnexbFrame {
         public ByteBuffer frame;
         public int size;
+    }
+
+    /**
+     * the muxed flv frame.
+     */
+    class SrsFlvFrame {
+        // the tag bytes.
+        public SrsAnnexbFrame tag;
+        // the frame type, keyframe or not.
+        public int frame_type;
+        // the tag type, audio, video or data.
+        public int type;
+        // the dts in ms, tbn is 1000.
+        public int dts;
     }
 
     /**
@@ -615,6 +669,7 @@ public class SrsHttpFlv {
         private MediaFormat videoTrack;
         private MediaFormat audioTrack;
         private SrsUtils utils;
+        private Handler handler;
 
         private SrsRawH264Stream avc;
         private byte[] h264_sps;
@@ -632,6 +687,14 @@ public class SrsHttpFlv {
             h264_pps = new byte[0];
             h264_pps_changed = false;
             h264_sps_pps_sent = false;
+        }
+
+        /**
+         * set the handler to send message to work thread.
+         * @param h the handler to send the message.
+         */
+        public void setHandler(Handler h) {
+            handler = h;
         }
 
         public void setVideoTrack(MediaFormat format) {
@@ -658,7 +721,7 @@ public class SrsHttpFlv {
                 // H.264-AVC-ISO_IEC_14496-10.pdf, page 44.
                 //  7: SPS, 8: PPS, 5: I Frame, 1: P Frame
                 int nal_unit_type = (int)(frame.frame.get(0) & 0x1f);
-                if (nal_unit_type != SrsAvcNaluType.NonIDR) {
+                if (nal_unit_type == SrsAvcNaluType.SPS || nal_unit_type == SrsAvcNaluType.PPS) {
                     Log.i(TAG, String.format("annexb demux %dB, pts=%d, frame=%dB, nalu=%d", bi.size, pts, frame.size, nal_unit_type));
                 }
 
@@ -733,7 +796,7 @@ public class SrsHttpFlv {
 
             // the timestamp in rtmp message header is dts.
             int timestamp = dts;
-            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, flv_tag);
+            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, frame_type, flv_tag);
 
             // reset sps and pps.
             h264_sps_changed = false;
@@ -753,15 +816,33 @@ public class SrsHttpFlv {
             SrsAnnexbFrame flv_tag = avc.mux_avc2flv(ibps, frame_type, avc_packet_type, dts, pts);
 
             if (frame_type == SrsCodecVideoAVCFrame.KeyFrame) {
-                Log.i(TAG, String.format("flv: keyframe %dB, dts=%d", flv_tag.size, dts));
+                //Log.i(TAG, String.format("flv: keyframe %dB, dts=%d", flv_tag.size, dts));
             }
 
             // the timestamp in rtmp message header is dts.
             int timestamp = dts;
-            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, flv_tag);
+            rtmp_write_packet(SrsCodecFlvTag.Video, timestamp, frame_type, flv_tag);
         }
 
-        private void rtmp_write_packet(int type, int dts, SrsAnnexbFrame tag) {
+        private void rtmp_write_packet(int type, int dts, int frame_type, SrsAnnexbFrame tag) {
+            SrsFlvFrame frame = new SrsFlvFrame();
+            frame.tag = tag;
+            frame.type = type;
+            frame.dts = dts;
+            frame.frame_type = frame_type;
+
+            // use handler to send the message.
+            // TODO: FIXME: we must wait for the handler to ready, for the sps/pps cannot be dropped.
+            if (handler == null) {
+                Log.w(TAG, "flv: drop frame for handler not ready.");
+                return;
+            }
+
+            Message msg = Message.obtain();
+            msg.what = SrsMessageType.FLV;
+            msg.obj = frame;
+            handler.sendMessage(msg);
+            //Log.i(TAG, String.format("flv: enqueue frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
         }
     }
 }
