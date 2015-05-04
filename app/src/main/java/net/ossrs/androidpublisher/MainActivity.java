@@ -1,6 +1,7 @@
 package net.ossrs.androidpublisher;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.media.MediaCodec;
@@ -8,13 +9,17 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,9 +35,13 @@ public class MainActivity extends Activity {
     private long presentationTimeUs;
     private SrsHttpFlv muxer;
     private int videoTrack;
-    //private static final String HTTP_FLV = "http://ossrs.net:8936/live/android.flv";
-    //private static final String HTTP_FLV = "http://192.168.1.137:8936/live/android.flv";
-    private static final String HTTP_FLV = "http://192.168.2.111:8936/live/android.flv";
+    private SharedPreferences sp;
+
+    //private String flv_url = "http://ossrs.net:8936/live/livesteam.flv";
+    //private String flv_url = "http://192.168.1.137:8936/live/livesteam.flv";
+    //private String flv_url = "http://192.168.2.111:8936/live/livesteam.flv";
+    private String flv_url = "http://192.168.1.144:8936/live/livesteam.flv";
+
     private static final String TAG = "SrsPublisher";
     private static final String VCODEC = "video/avc";
 
@@ -113,8 +122,40 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        sp = getSharedPreferences("SrsPublisher", MODE_PRIVATE);
+
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
+
+        // restore data.
+        flv_url = sp.getString("FLV_URL", flv_url);
+        Log.i(TAG, String.format("initialize flv url to %s", flv_url));
+
+        // initialize url.
+        final EditText efu = (EditText)findViewById(R.id.flv_url);
+        efu.setText(flv_url);
+        efu.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+            @Override
+            public void afterTextChanged(Editable s) {
+                String fu = efu.getText().toString();
+                if (fu == flv_url) {
+                    return;
+                }
+
+                flv_url = fu;
+                Log.i(TAG, String.format("flv url changed to %s", flv_url));
+
+                SharedPreferences.Editor editor = sp.edit();
+                editor.putString("FLV_URL", flv_url);
+                editor.commit();
+            }
+        });
 
         // when got YUV frame from camera.
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
@@ -159,103 +200,120 @@ public class MainActivity extends Activity {
         };
 
         // for camera, @see https://developer.android.com/reference/android/hardware/Camera.html
-        final Button btn = (Button)findViewById(R.id.capture);
+        final Button btnPublish = (Button)findViewById(R.id.capture);
+        final Button btnStop = (Button)findViewById(R.id.stop);
         final SurfaceView preview = (SurfaceView)findViewById(R.id.camera_preview);
-        btn.setOnClickListener(new View.OnClickListener() {
+        btnPublish.setEnabled(true);
+        btnStop.setEnabled(false);
+
+        btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 dispose();
 
-                camera = Camera.open(0);
-                Camera.Parameters parameters = camera.getParameters();
-
-                parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
-                parameters.setWhiteBalance(Camera.Parameters.WHITE_BALANCE_AUTO);
-                parameters.setSceneMode(Camera.Parameters.SCENE_MODE_AUTO);
-                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-                parameters.setPreviewFormat(ImageFormat.YV12);
-
-                Camera.Size size = null;
-                List<Camera.Size> sizes = parameters.getSupportedPictureSizes();
-                for (int i = 0; i < sizes.size(); i++) {
-                    //Log.i(TAG, String.format("camera supported picture size %dx%d", sizes.get(i).width, sizes.get(i).height));
-                    if (sizes.get(i).width == 640) {
-                        size = sizes.get(i);
-                    }
-                }
-                parameters.setPictureSize(size.width, size.height);
-                Log.i(TAG, String.format("set the picture size in %dx%d", size.width, size.height));
-
-                sizes = parameters.getSupportedPreviewSizes();
-                for (int i = 0; i < sizes.size(); i++) {
-                    //Log.i(TAG, String.format("camera supported preview size %dx%d", sizes.get(i).width, sizes.get(i).height));
-                    if (sizes.get(i).width == 640) {
-                        vsize = size = sizes.get(i);
-                    }
-                }
-                parameters.setPreviewSize(size.width, size.height);
-                Log.i(TAG, String.format("set the preview size in %dx%d", size.width, size.height));
-
-                camera.setDisplayOrientation(90);
-                camera.setParameters(parameters);
-
-                // start the muxer to POST stream to SRS over HTTP FLV.
-                muxer = new SrsHttpFlv(HTTP_FLV, SrsHttpFlv.OutputFormat.MUXER_OUTPUT_HTTP_FLV);
-                try {
-                    muxer.start();
-                } catch (IOException e) {
-                    Log.e(TAG, "start muxer failed.");
-                    e.printStackTrace();
-                    return;
-                }
-                Log.i(TAG, String.format("start muxer to SRS over HTTP FLV, url=%s", HTTP_FLV));
-
-                // encoder yuv to 264 es stream.
-                // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
-                try {
-                    encoder = MediaCodec.createEncoderByType(VCODEC);
-                } catch (IOException e) {
-                    Log.e(TAG, "create encoder failed.");
-                    e.printStackTrace();
-                    return;
-                }
-                ebi = new MediaCodec.BufferInfo();
-                presentationTimeUs = new Date().getTime() * 1000;
-
-                // start the encoder.
-                // @see https://developer.android.com/reference/android/media/MediaCodec.html
-                MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
-                format.setInteger(MediaFormat.KEY_BIT_RATE, 125000);
-                format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
-                format.setInteger(MediaFormat.KEY_COLOR_FORMAT, chooseColorFormat());
-                format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
-                format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
-                encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-                Log.i(TAG, "start avc encoder");
-                encoder.start();
-
-                // add the video tracker to muxer.
-                videoTrack = muxer.addTrack(format);
-                Log.i(TAG, String.format("muxer add video track index=%d", videoTrack));
-
-                // set the callback and start the preview.
-                buffer = new byte[getYuvBuffer(size.width, size.height)];
-                camera.addCallbackBuffer(buffer);
-                camera.setPreviewCallbackWithBuffer(onYuvFrame);
-                try {
-                    camera.setPreviewDisplay(preview.getHolder());
-                } catch (IOException e) {
-                    Log.e(TAG, "preview video failed.");
-                    e.printStackTrace();
-                    return;
-                }
-
-                Log.i(TAG, String.format("start to preview video in %dx%d, buffer %dB", size.width, size.height, buffer.length));
-                camera.startPreview();
-
-                btn.setEnabled(false);
+                btnPublish.setEnabled(true);
+                btnStop.setEnabled(false);
             }
         });
+
+        btnPublish.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dispose();
+                publsh(onYuvFrame, preview.getHolder());
+                btnPublish.setEnabled(false);
+                btnStop.setEnabled(true);
+            }
+        });
+    }
+
+    private void publsh(Camera.PreviewCallback onYuvFrame, SurfaceHolder holder) {
+        camera = Camera.open(0);
+        Camera.Parameters parameters = camera.getParameters();
+
+        parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+        parameters.setWhiteBalance(Camera.Parameters.WHITE_BALANCE_AUTO);
+        parameters.setSceneMode(Camera.Parameters.SCENE_MODE_AUTO);
+        parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+        parameters.setPreviewFormat(ImageFormat.YV12);
+
+        Camera.Size size = null;
+        List<Camera.Size> sizes = parameters.getSupportedPictureSizes();
+        for (int i = 0; i < sizes.size(); i++) {
+            //Log.i(TAG, String.format("camera supported picture size %dx%d", sizes.get(i).width, sizes.get(i).height));
+            if (sizes.get(i).width == 640) {
+                size = sizes.get(i);
+            }
+        }
+        parameters.setPictureSize(size.width, size.height);
+        Log.i(TAG, String.format("set the picture size in %dx%d", size.width, size.height));
+
+        sizes = parameters.getSupportedPreviewSizes();
+        for (int i = 0; i < sizes.size(); i++) {
+            //Log.i(TAG, String.format("camera supported preview size %dx%d", sizes.get(i).width, sizes.get(i).height));
+            if (sizes.get(i).width == 640) {
+                vsize = size = sizes.get(i);
+            }
+        }
+        parameters.setPreviewSize(size.width, size.height);
+        Log.i(TAG, String.format("set the preview size in %dx%d", size.width, size.height));
+
+        camera.setDisplayOrientation(90);
+        camera.setParameters(parameters);
+
+        // start the muxer to POST stream to SRS over HTTP FLV.
+        muxer = new SrsHttpFlv(flv_url, SrsHttpFlv.OutputFormat.MUXER_OUTPUT_HTTP_FLV);
+        try {
+            muxer.start();
+        } catch (IOException e) {
+            Log.e(TAG, "start muxer failed.");
+            e.printStackTrace();
+            return;
+        }
+        Log.i(TAG, String.format("start muxer to SRS over HTTP FLV, url=%s", flv_url));
+
+        // encoder yuv to 264 es stream.
+        // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
+        try {
+            encoder = MediaCodec.createEncoderByType(VCODEC);
+        } catch (IOException e) {
+            Log.e(TAG, "create encoder failed.");
+            e.printStackTrace();
+            return;
+        }
+        ebi = new MediaCodec.BufferInfo();
+        presentationTimeUs = new Date().getTime() * 1000;
+
+        // start the encoder.
+        // @see https://developer.android.com/reference/android/media/MediaCodec.html
+        MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
+        format.setInteger(MediaFormat.KEY_BIT_RATE, 125000);
+        format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
+        format.setInteger(MediaFormat.KEY_COLOR_FORMAT, chooseColorFormat());
+        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+        format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        Log.i(TAG, "start avc encoder");
+        encoder.start();
+
+        // add the video tracker to muxer.
+        videoTrack = muxer.addTrack(format);
+        Log.i(TAG, String.format("muxer add video track index=%d", videoTrack));
+
+        // set the callback and start the preview.
+        buffer = new byte[getYuvBuffer(size.width, size.height)];
+        camera.addCallbackBuffer(buffer);
+        camera.setPreviewCallbackWithBuffer(onYuvFrame);
+        try {
+            camera.setPreviewDisplay(holder);
+        } catch (IOException e) {
+            Log.e(TAG, "preview video failed.");
+            e.printStackTrace();
+            return;
+        }
+
+        Log.i(TAG, String.format("start to preview video in %dx%d, buffer %dB", size.width, size.height, buffer.length));
+        camera.startPreview();
     }
 
     private void dispose() {
