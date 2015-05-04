@@ -250,12 +250,38 @@ public class SrsHttpFlv {
             videoSequenceHeader = frame;
         }
 
-        if (bos != null) {
-            byte[] data = frame.tag.frame.array();
-            bos.write(data, 0, frame.tag.size);
-            bos.flush();
-            Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+        if (bos == null || frame.tag.size <= 0) {
+            return;
         }
+
+        // write the 11B flv tag header
+        ByteBuffer th = ByteBuffer.allocate(11);
+        // Reserved UB [2]
+        // Filter UB [1]
+        // TagType UB [5]
+        // DataSize UI24
+        th.putInt((int) ((frame.tag.size & 0x00FFFFFF) | ((frame.type & 0x1F) << 24)));
+        // Timestamp UI24
+        // TimestampExtended UI8
+        th.putInt((int)((frame.dts << 8) & 0xFFFFFF00) | (frame.dts & 0x000000FF));
+        // StreamID UI24 Always 0.
+        th.put((byte)0);
+        th.put((byte)0);
+        th.put((byte)0);
+        bos.write(th.array());
+
+        // write the flv tag data.
+        byte[] data = frame.tag.frame.array();
+        bos.write(data, 0, frame.tag.size);
+
+        // write the 4B previous tag size.
+        // @remark, we append the tag size, this is different to SRS which write RTMP packet.
+        ByteBuffer pps = ByteBuffer.allocate(4);
+        pps.putInt((int)(frame.tag.size + 11));
+        bos.write(pps.array());
+
+        bos.flush();
+        Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
     }
 
     /**
@@ -665,8 +691,6 @@ public class SrsHttpFlv {
                 SrsAnnexbFrame frame = frames.get(i);
                 flv_tag.size += frame.size;
             }
-            // @remark, we append the tag size, this is different to SRS which write RTMP packet.
-            flv_tag.size += 4;
 
             flv_tag.frame = ByteBuffer.allocate(flv_tag.size);
 
@@ -695,9 +719,6 @@ public class SrsHttpFlv {
                 frame.frame.get(frame_bytes);
                 flv_tag.frame.put(frame_bytes);
             }
-
-            // tag size.
-            flv_tag.frame.putInt((int)(flv_tag.size - 4));
 
             // reset the buffer.
             flv_tag.frame.rewind();

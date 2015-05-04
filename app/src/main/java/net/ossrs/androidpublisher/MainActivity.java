@@ -37,10 +37,10 @@ public class MainActivity extends Activity {
     private int videoTrack;
     private SharedPreferences sp;
 
-    //private String flv_url = "http://ossrs.net:8936/live/livesteam.flv";
-    //private String flv_url = "http://192.168.1.137:8936/live/livesteam.flv";
-    //private String flv_url = "http://192.168.2.111:8936/live/livesteam.flv";
-    private String flv_url = "http://192.168.1.144:8936/live/livesteam.flv";
+    //private String flv_url = "http://ossrs.net:8936/live/livestream.flv";
+    //private String flv_url = "http://192.168.1.137:8936/live/livestream.flv";
+    //private String flv_url = "http://192.168.2.111:8936/live/livestream.flv";
+    private String flv_url = "http://192.168.1.144:8936/live/livestream.flv";
 
     private static final String TAG = "SrsPublisher";
     private static final String VCODEC = "video/avc";
