@@ -22,11 +22,11 @@ The workflow of the android publisher is:
 
 ## Show
 
-[[https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.800kbps.jpg]]
+[800kbps](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.800kbps.jpg)
 
 CPU 13% for publishing live to SRS over HTTP FLV, bitrate is 800kbps, fps is 25 and gop is 10s.
 
-[[https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.125kbps.png]]
+[125kbps](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.125.kbps.jpg)
 
 CPU 6% for publishing live to SRS over HTTP FLV, bitrate is 125kbps, fps is 15 and gop is 5s.
 
