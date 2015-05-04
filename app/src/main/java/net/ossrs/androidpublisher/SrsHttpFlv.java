@@ -260,10 +260,12 @@ public class SrsHttpFlv {
         // Filter UB [1]
         // TagType UB [5]
         // DataSize UI24
-        th.putInt((int) ((frame.tag.size & 0x00FFFFFF) | ((frame.type & 0x1F) << 24)));
+        int tag_size = (int)((frame.tag.size & 0x00FFFFFF) | ((frame.type & 0x1F) << 24));
+        th.putInt(tag_size);
         // Timestamp UI24
         // TimestampExtended UI8
-        th.putInt((int)((frame.dts << 8) & 0xFFFFFF00) | (frame.dts & 0x000000FF));
+        int time = (int)((frame.dts << 8) & 0xFFFFFF00) | ((frame.dts >> 24) & 0x000000FF);
+        th.putInt(time);
         // StreamID UI24 Always 0.
         th.put((byte)0);
         th.put((byte)0);
@@ -281,7 +283,11 @@ public class SrsHttpFlv {
         bos.write(pps.array());
 
         bos.flush();
-        Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+        if (frame.frame_type == SrsCodecVideoAVCFrame.KeyFrame) {
+            Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB, tag_size=%#x, time=%#x",
+                    frame.type, frame.dts, frame.tag.size, tag_size, time
+            ));
+        }
     }
 
     /**
