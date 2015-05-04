@@ -65,9 +65,6 @@ public class SrsHttpFlv {
      * start to the remote SRS for remux.
      */
     public void start() throws IOException {
-        URL u = new URL(url);
-        conn = (HttpURLConnection)u.openConnection();
-
         worker = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -180,6 +177,7 @@ public class SrsHttpFlv {
         Log.i(TAG, String.format("worker: connect to SRS by url=%s", url));
         conn.setDoOutput(true);
         conn.setChunkedStreamingMode(0);
+        conn.setRequestProperty("Content-Type", "application/octet-stream");
         bos = new BufferedOutputStream(conn.getOutputStream());
         Log.i(TAG, String.format("worker: muxer opened, url=%s", url));
 
@@ -193,6 +191,7 @@ public class SrsHttpFlv {
                 (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00
         };
         bos.write(flv_header);
+        bos.flush();
         Log.i(TAG, String.format("worker: flv header ok."));
 
         sendFlvTag(bos, videoSequenceHeader);
@@ -215,13 +214,18 @@ public class SrsHttpFlv {
                     if (frame.frame_type == SrsCodecVideoAVCFrame.KeyFrame) {
                         reconnect();
                     }
+                } catch (Exception e) {
+                    Log.e(TAG, String.format("worker: reconnect failed. e=%s", e.getMessage()));
+                    disconnect();
+                }
 
+                try {
                     // try to send, igore when not connected.
                     sendFlvTag(bos, frame);
                 } catch (Exception e) {
-                    disconnect();
+                    e.printStackTrace();
                     Log.e(TAG, String.format("worker: send flv tag failed, e=%s", e.getMessage()));
-                    return;
+                    disconnect();
                 }
             }
         };
@@ -231,6 +235,10 @@ public class SrsHttpFlv {
     }
 
     private void sendFlvTag(BufferedOutputStream bos, SrsFlvFrame frame) throws IOException {
+        if (frame == null) {
+            return;
+        }
+
         if (frame.frame_type == SrsCodecVideoAVCFrame.KeyFrame) {
             Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
         } else {
@@ -245,6 +253,7 @@ public class SrsHttpFlv {
         if (bos != null) {
             byte[] data = frame.tag.frame.array();
             bos.write(data, 0, frame.tag.size);
+            bos.flush();
             Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
         }
     }
