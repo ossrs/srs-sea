@@ -4,10 +4,13 @@ import android.app.Activity;
 import android.content.SharedPreferences;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -27,16 +30,21 @@ import java.util.Date;
 import java.util.List;
 
 public class MainActivity extends Activity {
+    // audio device.
+    private AudioRecord mic;
+    private static final int ASAMPLE_RATE = 22050;
+    private static final int ACHANNEL = AudioFormat.CHANNEL_IN_STEREO;
+    private static final int AFORMAT = AudioFormat.ENCODING_PCM_16BIT;
+
+    // video device.
     private Camera camera;
-    private MediaCodec encoder;
+    private MediaCodec vencoder;
     private MediaCodec.BufferInfo ebi;
     private byte[] buffer;
-    private long presentationTimeUs;
-    private SrsHttpFlv muxer;
-    private int videoTrack;
-    private SharedPreferences sp;
 
+    // video camera settings.
     private Camera.Size vsize;
+    private int videoTrack;
     private int vcolor;
 
     //private String flv_url = "http://ossrs.net:8936/live/livestream.flv";
@@ -46,70 +54,20 @@ public class MainActivity extends Activity {
     // the bitrate in kbps.
     private int vbitrate_kbps = 125;
 
+    // encoding params.
+    private long presentationTimeUs;
+    private SrsHttpFlv muxer;
+
+    // settings storage
+    private SharedPreferences sp;
+
     private static final String TAG = "SrsPublisher";
     private static final String VCODEC = "video/avc";
 
     public MainActivity() {
         camera = null;
-        encoder = null;
+        vencoder = null;
         muxer = null;
-    }
-
-    // for the buffer for YV12(android YUV), @see below:
-    // https://developer.android.com/reference/android/hardware/Camera.Parameters.html#setPreviewFormat(int)
-    // https://developer.android.com/reference/android/graphics/ImageFormat.html#YV12
-    private int getYuvBuffer(int width, int height) {
-        // stride = ALIGN(width, 16)
-        int stride = (int)Math.ceil(width / 16.0) * 16;
-        // y_size = stride * height
-        int y_size = stride * height;
-        // c_stride = ALIGN(stride/2, 16)
-        int c_stride = (int)Math.ceil(width / 32.0) * 16;
-        // c_size = c_stride * height/2
-        int c_size = c_stride * height / 2;
-        // size = y_size + c_size * 2
-        return y_size + c_size * 2;
-    }
-
-    // choose the right supported color format. @see below:
-    // https://developer.android.com/reference/android/media/MediaCodecInfo.html
-    // https://developer.android.com/reference/android/media/MediaCodecInfo.CodecCapabilities.html
-    private int chooseColorFormat() {
-        MediaCodecInfo ci = null;
-
-        int nbCodecs = MediaCodecList.getCodecCount();
-        for (int i = 0; i < nbCodecs; i++) {
-            MediaCodecInfo mci = MediaCodecList.getCodecInfoAt(i);
-            if (!mci.isEncoder()) {
-                continue;
-            }
-
-            String[] types = mci.getSupportedTypes();
-            for (int j = 0; j < types.length; j++) {
-                if (types[j].equalsIgnoreCase(VCODEC)) {
-                    //Log.i(TAG, String.format("encoder %s types: %s", mci.getName(), types[j]));
-                    ci = mci;
-                    break;
-                }
-            }
-        }
-
-        int matchedColorFormat = 0;
-        MediaCodecInfo.CodecCapabilities cc = ci.getCapabilitiesForType(VCODEC);
-        for (int i = 0; i < cc.colorFormats.length; i++) {
-            int cf = cc.colorFormats[i];
-            Log.i(TAG, String.format("encoder %s supports color fomart %d", ci.getName(), cf));
-
-            // choose YUV for h.264, prefer the bigger one.
-            if (cf >= cc.COLOR_FormatYUV411Planar && cf <= cc.COLOR_FormatYUV422SemiPlanar) {
-                if (cf > matchedColorFormat) {
-                    matchedColorFormat = cf;
-                }
-            }
-        }
-
-        Log.i(TAG, String.format("encoder %s choose color format %d", ci.getName(), matchedColorFormat));
-        return matchedColorFormat;
     }
 
     // when got encoded h264 es stream.
@@ -122,46 +80,14 @@ public class MainActivity extends Activity {
         }
     }
 
-    // the color transform, @see http://stackoverflow.com/questions/15739684/mediacodec-and-camera-color-space-incorrect
-    public static byte[] YV12toYUV420PackedSemiPlanar(final byte[] input, final byte[] output, final int width, final int height) {
-        /*
-         * COLOR_TI_FormatYUV420PackedSemiPlanar is NV12
-         * We convert by putting the corresponding U and V bytes together (interleaved).
-         */
-        final int frameSize = width * height;
-        final int qFrameSize = frameSize / 4;
-
-        System.arraycopy(input, 0, output, 0, frameSize); // Y
-
-        for (int i = 0; i < qFrameSize; i++) {
-            output[frameSize + i * 2] = input[frameSize + i + qFrameSize]; // Cb (U)
-            output[frameSize + i * 2 + 1] = input[frameSize + i]; // Cr (V)
-        }
-        return output;
-    }
-    public static byte[] YV12toYUV420Planar(byte[] input, byte[] output, int width, int height) {
-        /*
-         * COLOR_FormatYUV420Planar is I420 which is like YV12, but with U and V reversed.
-         * So we just have to reverse U and V.
-         */
-        final int frameSize = width * height;
-        final int qFrameSize = frameSize/4;
-
-        System.arraycopy(input, 0, output, 0, frameSize); // Y
-        System.arraycopy(input, frameSize, output, frameSize + qFrameSize, qFrameSize); // Cr (V)
-        System.arraycopy(input, frameSize + qFrameSize, output, frameSize, qFrameSize); // Cb (U)
-
-        return output;
-    }
-
     private void onGetYuvFrame(byte[] data) {
         //Log.i(TAG, String.format("got YUV image, size=%d", data.length));
 
-        // feed the encoder with yuv frame, got the encoded 264 es stream.
-        ByteBuffer[] inBuffers = encoder.getInputBuffers();
-        ByteBuffer[] outBuffers = encoder.getOutputBuffers();
+        // feed the vencoder with yuv frame, got the encoded 264 es stream.
+        ByteBuffer[] inBuffers = vencoder.getInputBuffers();
+        ByteBuffer[] outBuffers = vencoder.getOutputBuffers();
         if (true) {
-            int inBufferIndex = encoder.dequeueInputBuffer(-1);
+            int inBufferIndex = vencoder.dequeueInputBuffer(-1);
             //Log.i(TAG, String.format("try to dequeue input buffer, ii=%d", inBufferIndex));
             if (inBufferIndex >= 0) {
                 ByteBuffer bb = inBuffers[inBufferIndex];
@@ -169,16 +95,16 @@ public class MainActivity extends Activity {
                 bb.put(data, 0, data.length);
                 long pts = new Date().getTime() * 1000 - presentationTimeUs;
                 //Log.i(TAG, String.format("feed YUV to encode %dB, pts=%d", data.length, pts / 1000));
-                encoder.queueInputBuffer(inBufferIndex, 0, data.length, pts, 0);
+                vencoder.queueInputBuffer(inBufferIndex, 0, data.length, pts, 0);
             }
 
-            for (;;) {
-                int outBufferIndex = encoder.dequeueOutputBuffer(ebi, 0);
+            for (; ; ) {
+                int outBufferIndex = vencoder.dequeueOutputBuffer(ebi, 0);
                 //Log.i(TAG, String.format("try to dequeue output buffer, ii=%d, oi=%d", inBufferIndex, outBufferIndex));
                 if (outBufferIndex >= 0) {
                     ByteBuffer bb = outBuffers[outBufferIndex];
                     onEncodedAnnexbFrame(bb, ebi);
-                    encoder.releaseOutputBuffer(outBufferIndex, false);
+                    vencoder.releaseOutputBuffer(outBufferIndex, false);
                 }
 
                 if (outBufferIndex < 0) {
@@ -203,15 +129,17 @@ public class MainActivity extends Activity {
         Log.i(TAG, String.format("initialize flv url to %s, vbitrate=%dkbps", flv_url, vbitrate_kbps));
 
         // initialize url.
-        final EditText efu = (EditText)findViewById(R.id.flv_url);
+        final EditText efu = (EditText) findViewById(R.id.flv_url);
         efu.setText(flv_url);
         efu.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             }
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
             }
+
             @Override
             public void afterTextChanged(Editable s) {
                 String fu = efu.getText().toString();
@@ -228,15 +156,17 @@ public class MainActivity extends Activity {
             }
         });
 
-        final EditText evb = (EditText)findViewById(R.id.vbitrate);
+        final EditText evb = (EditText) findViewById(R.id.vbitrate);
         evb.setText(String.format("%dkbps", vbitrate_kbps));
         evb.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             }
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
             }
+
             @Override
             public void afterTextChanged(Editable s) {
                 int vb = Integer.parseInt(evb.getText().toString().replaceAll("kbps", ""));
@@ -271,7 +201,7 @@ public class MainActivity extends Activity {
                     //System.arraycopy(data, 0, frame, 0, data.length);
                 }
 
-                // feed the frame to encoder and muxer.
+                // feed the frame to vencoder and muxer.
                 onGetYuvFrame(frame);
 
                 // to fetch next frame.
@@ -280,9 +210,9 @@ public class MainActivity extends Activity {
         };
 
         // for camera, @see https://developer.android.com/reference/android/hardware/Camera.html
-        final Button btnPublish = (Button)findViewById(R.id.capture);
-        final Button btnStop = (Button)findViewById(R.id.stop);
-        final SurfaceView preview = (SurfaceView)findViewById(R.id.camera_preview);
+        final Button btnPublish = (Button) findViewById(R.id.capture);
+        final Button btnStop = (Button) findViewById(R.id.stop);
+        final SurfaceView preview = (SurfaceView) findViewById(R.id.camera_preview);
         btnPublish.setEnabled(true);
         btnStop.setEnabled(false);
 
@@ -321,6 +251,12 @@ public class MainActivity extends Activity {
             return;
         }
 
+        // open mic.
+        int bufferSize = AudioRecord.getMinBufferSize(ASAMPLE_RATE, ACHANNEL, AFORMAT);
+        mic = new AudioRecord(MediaRecorder.AudioSource.MIC, ASAMPLE_RATE, ACHANNEL, AFORMAT, bufferSize);
+        Log.i(TAG, String.format("create mic in %dHZ, %d channels, %d format", ASAMPLE_RATE, ACHANNEL, AFORMAT));
+
+        // open camera.
         camera = Camera.open(0);
         Camera.Parameters parameters = camera.getParameters();
 
@@ -369,19 +305,19 @@ public class MainActivity extends Activity {
         }
         Log.i(TAG, String.format("start muxer to SRS over HTTP FLV, url=%s", flv_url));
 
-        // encoder yuv to 264 es stream.
+        // vencoder yuv to 264 es stream.
         // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
         try {
-            encoder = MediaCodec.createEncoderByType(VCODEC);
+            vencoder = MediaCodec.createEncoderByType(VCODEC);
         } catch (IOException e) {
-            Log.e(TAG, "create encoder failed.");
+            Log.e(TAG, "create vencoder failed.");
             e.printStackTrace();
             return;
         }
         ebi = new MediaCodec.BufferInfo();
         presentationTimeUs = new Date().getTime() * 1000;
 
-        // start the encoder.
+        // start the vencoder.
         vcolor = chooseColorFormat();
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
         MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
@@ -390,9 +326,9 @@ public class MainActivity extends Activity {
         format.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * vbitrate_kbps);
         format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
-        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-        Log.i(TAG, "start avc encoder");
-        encoder.start();
+        vencoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        Log.i(TAG, "start avc vencoder");
+        vencoder.start();
 
         // add the video tracker to muxer.
         videoTrack = muxer.addTrack(format);
@@ -415,6 +351,12 @@ public class MainActivity extends Activity {
     }
 
     private void dispose() {
+        if (mic != null) {
+            mic.stop();
+            mic.release();
+            mic = null;
+        }
+
         if (camera != null) {
             Log.i(TAG, "stop preview");
             camera.setPreviewCallbackWithBuffer(null);
@@ -423,11 +365,11 @@ public class MainActivity extends Activity {
             camera = null;
         }
 
-        if (encoder != null) {
-            Log.i(TAG, "stop encoder");
-            encoder.stop();
-            encoder.release();
-            encoder = null;
+        if (vencoder != null) {
+            Log.i(TAG, "stop vencoder");
+            vencoder.stop();
+            vencoder.release();
+            vencoder = null;
         }
 
         if (muxer != null) {
@@ -442,7 +384,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
 
-        final Button btn = (Button)findViewById(R.id.capture);
+        final Button btn = (Button) findViewById(R.id.capture);
         btn.setEnabled(true);
     }
 
@@ -472,5 +414,95 @@ public class MainActivity extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    // for the buffer for YV12(android YUV), @see below:
+    // https://developer.android.com/reference/android/hardware/Camera.Parameters.html#setPreviewFormat(int)
+    // https://developer.android.com/reference/android/graphics/ImageFormat.html#YV12
+    private int getYuvBuffer(int width, int height) {
+        // stride = ALIGN(width, 16)
+        int stride = (int) Math.ceil(width / 16.0) * 16;
+        // y_size = stride * height
+        int y_size = stride * height;
+        // c_stride = ALIGN(stride/2, 16)
+        int c_stride = (int) Math.ceil(width / 32.0) * 16;
+        // c_size = c_stride * height/2
+        int c_size = c_stride * height / 2;
+        // size = y_size + c_size * 2
+        return y_size + c_size * 2;
+    }
+
+    // choose the right supported color format. @see below:
+    // https://developer.android.com/reference/android/media/MediaCodecInfo.html
+    // https://developer.android.com/reference/android/media/MediaCodecInfo.CodecCapabilities.html
+    private int chooseColorFormat() {
+        MediaCodecInfo ci = null;
+
+        int nbCodecs = MediaCodecList.getCodecCount();
+        for (int i = 0; i < nbCodecs; i++) {
+            MediaCodecInfo mci = MediaCodecList.getCodecInfoAt(i);
+            if (!mci.isEncoder()) {
+                continue;
+            }
+
+            String[] types = mci.getSupportedTypes();
+            for (int j = 0; j < types.length; j++) {
+                if (types[j].equalsIgnoreCase(VCODEC)) {
+                    //Log.i(TAG, String.format("vencoder %s types: %s", mci.getName(), types[j]));
+                    ci = mci;
+                    break;
+                }
+            }
+        }
+
+        int matchedColorFormat = 0;
+        MediaCodecInfo.CodecCapabilities cc = ci.getCapabilitiesForType(VCODEC);
+        for (int i = 0; i < cc.colorFormats.length; i++) {
+            int cf = cc.colorFormats[i];
+            Log.i(TAG, String.format("vencoder %s supports color fomart %d", ci.getName(), cf));
+
+            // choose YUV for h.264, prefer the bigger one.
+            if (cf >= cc.COLOR_FormatYUV411Planar && cf <= cc.COLOR_FormatYUV422SemiPlanar) {
+                if (cf > matchedColorFormat) {
+                    matchedColorFormat = cf;
+                }
+            }
+        }
+
+        Log.i(TAG, String.format("vencoder %s choose color format %d", ci.getName(), matchedColorFormat));
+        return matchedColorFormat;
+    }
+
+    // the color transform, @see http://stackoverflow.com/questions/15739684/mediacodec-and-camera-color-space-incorrect
+    private static byte[] YV12toYUV420PackedSemiPlanar(final byte[] input, final byte[] output, final int width, final int height) {
+        /*
+         * COLOR_TI_FormatYUV420PackedSemiPlanar is NV12
+         * We convert by putting the corresponding U and V bytes together (interleaved).
+         */
+        final int frameSize = width * height;
+        final int qFrameSize = frameSize / 4;
+
+        System.arraycopy(input, 0, output, 0, frameSize); // Y
+
+        for (int i = 0; i < qFrameSize; i++) {
+            output[frameSize + i * 2] = input[frameSize + i + qFrameSize]; // Cb (U)
+            output[frameSize + i * 2 + 1] = input[frameSize + i]; // Cr (V)
+        }
+        return output;
+    }
+
+    private static byte[] YV12toYUV420Planar(byte[] input, byte[] output, int width, int height) {
+        /*
+         * COLOR_FormatYUV420Planar is I420 which is like YV12, but with U and V reversed.
+         * So we just have to reverse U and V.
+         */
+        final int frameSize = width * height;
+        final int qFrameSize = frameSize / 4;
+
+        System.arraycopy(input, 0, output, 0, frameSize); // Y
+        System.arraycopy(input, frameSize, output, frameSize + qFrameSize, qFrameSize); // Cr (V)
+        System.arraycopy(input, frameSize + qFrameSize, output, frameSize, qFrameSize); // Cb (U)
+
+        return output;
     }
 }
