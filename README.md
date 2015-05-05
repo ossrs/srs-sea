@@ -25,7 +25,7 @@ The workflow of the android publisher is:
 
 The latency is same to RTMP, 0.8s in lan and 3-5s in wan.
 
-![0.8s latency](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.delay.jpg)
+![0.8s latency](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.delay1.jpg)
 
 ## Lightweight
 
