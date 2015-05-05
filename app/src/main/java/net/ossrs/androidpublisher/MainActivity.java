@@ -32,19 +32,30 @@ import java.util.List;
 public class MainActivity extends Activity {
     // audio device.
     private AudioRecord mic;
-    private static final int ASAMPLE_RATE = 22050;
-    private static final int ACHANNEL = AudioFormat.CHANNEL_IN_STEREO;
-    private static final int AFORMAT = AudioFormat.ENCODING_PCM_16BIT;
+    private byte[] abuffer;
+    private MediaCodec aencoder;
+    private MediaCodec.BufferInfo aebi;
+
+    // audio mic settings.
+    private int asample_rate;
+    private int achannel;
+    private int abits;
+    private int atrack;
+
+    // The interval in which the recorded samples are output to the file
+    // Used only in uncompressed mode
+    private static final int ATIMER_INTERVAL = 23;
+    private static final int ABITRATE_KBPS = 24;
 
     // video device.
     private Camera camera;
     private MediaCodec vencoder;
-    private MediaCodec.BufferInfo ebi;
-    private byte[] buffer;
+    private MediaCodec.BufferInfo vebi;
+    private byte[] vbuffer;
 
     // video camera settings.
     private Camera.Size vsize;
-    private int videoTrack;
+    private int vtrack;
     private int vcolor;
 
     //private String flv_url = "http://ossrs.net:8936/live/livestream.flv";
@@ -62,56 +73,14 @@ public class MainActivity extends Activity {
     private SharedPreferences sp;
 
     private static final String TAG = "SrsPublisher";
+    // http://developer.android.com/reference/android/media/MediaCodec.html#createByCodecName(java.lang.String)
     private static final String VCODEC = "video/avc";
+    private static final String ACODEC = "audio/mp4a-latm";
 
     public MainActivity() {
         camera = null;
         vencoder = null;
         muxer = null;
-    }
-
-    // when got encoded h264 es stream.
-    private void onEncodedAnnexbFrame(ByteBuffer es, MediaCodec.BufferInfo bi) {
-        try {
-            muxer.writeSampleData(videoTrack, es, bi);
-        } catch (Exception e) {
-            Log.e(TAG, "muxer write sample failed.");
-            e.printStackTrace();
-        }
-    }
-
-    private void onGetYuvFrame(byte[] data) {
-        //Log.i(TAG, String.format("got YUV image, size=%d", data.length));
-
-        // feed the vencoder with yuv frame, got the encoded 264 es stream.
-        ByteBuffer[] inBuffers = vencoder.getInputBuffers();
-        ByteBuffer[] outBuffers = vencoder.getOutputBuffers();
-        if (true) {
-            int inBufferIndex = vencoder.dequeueInputBuffer(-1);
-            //Log.i(TAG, String.format("try to dequeue input buffer, ii=%d", inBufferIndex));
-            if (inBufferIndex >= 0) {
-                ByteBuffer bb = inBuffers[inBufferIndex];
-                bb.clear();
-                bb.put(data, 0, data.length);
-                long pts = new Date().getTime() * 1000 - presentationTimeUs;
-                //Log.i(TAG, String.format("feed YUV to encode %dB, pts=%d", data.length, pts / 1000));
-                vencoder.queueInputBuffer(inBufferIndex, 0, data.length, pts, 0);
-            }
-
-            for (; ; ) {
-                int outBufferIndex = vencoder.dequeueOutputBuffer(ebi, 0);
-                //Log.i(TAG, String.format("try to dequeue output buffer, ii=%d, oi=%d", inBufferIndex, outBufferIndex));
-                if (outBufferIndex >= 0) {
-                    ByteBuffer bb = outBuffers[outBufferIndex];
-                    onEncodedAnnexbFrame(bb, ebi);
-                    vencoder.releaseOutputBuffer(outBufferIndex, false);
-                }
-
-                if (outBufferIndex < 0) {
-                    break;
-                }
-            }
-        }
     }
 
     @Override
@@ -185,7 +154,7 @@ public class MainActivity extends Activity {
 
         // when got YUV frame from camera.
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
-        final Camera.PreviewCallback onYuvFrame = new Camera.PreviewCallback() {
+        final Object onYuvFrame = new Camera.PreviewCallback() {
             @Override
             public void onPreviewFrame(byte[] data, Camera camera) {
                 // color space transform.
@@ -205,7 +174,33 @@ public class MainActivity extends Activity {
                 onGetYuvFrame(frame);
 
                 // to fetch next frame.
-                camera.addCallbackBuffer(buffer);
+                camera.addCallbackBuffer(vbuffer);
+            }
+        };
+
+        // the audio pcm frame callback.
+        final Object onPcmFrame = new AudioRecord.OnRecordPositionUpdateListener() {
+            @Override
+            public void onMarkerReached(AudioRecord recorder) {
+            }
+            @Override
+            public void onPeriodicNotification(AudioRecord recorder) {
+                if (mic == null) {
+                    return;
+                }
+
+                int size = mic.read(abuffer, 0, abuffer.length);
+                //Log.i(TAG, String.format("mic got %dB pcm frame", size));
+
+                if (size <= 0) {
+                    return;
+                }
+
+                byte[] frame = new byte[size];
+                System.arraycopy(abuffer, 0, frame, 0, size);
+
+                // feed the frame to aencoder and muxer.
+                onGetPcmFrame(frame);
             }
         };
 
@@ -230,14 +225,14 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 dispose();
-                publish(onYuvFrame, preview.getHolder());
+                publish(onYuvFrame, onPcmFrame, preview.getHolder());
                 btnPublish.setEnabled(false);
                 btnStop.setEnabled(true);
             }
         });
     }
 
-    private void publish(Camera.PreviewCallback onYuvFrame, SurfaceHolder holder) {
+    private void publish(Object onYuvFrame, Object onPcmFrame, SurfaceHolder holder) {
         if (vbitrate_kbps <= 10) {
             Log.e(TAG, String.format("video bitrate must 10kbps+, actual is %d", vbitrate_kbps));
             return;
@@ -251,10 +246,47 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // open mic.
-        int bufferSize = AudioRecord.getMinBufferSize(ASAMPLE_RATE, ACHANNEL, AFORMAT);
-        mic = new AudioRecord(MediaRecorder.AudioSource.MIC, ASAMPLE_RATE, ACHANNEL, AFORMAT, bufferSize);
-        Log.i(TAG, String.format("create mic in %dHZ, %d channels, %d format", ASAMPLE_RATE, ACHANNEL, AFORMAT));
+        // start the muxer to POST stream to SRS over HTTP FLV.
+        muxer = new SrsHttpFlv(flv_url, SrsHttpFlv.OutputFormat.MUXER_OUTPUT_HTTP_FLV);
+        try {
+            muxer.start();
+        } catch (IOException e) {
+            Log.e(TAG, "start muxer failed.");
+            e.printStackTrace();
+            return;
+        }
+        Log.i(TAG, String.format("start muxer to SRS over HTTP FLV, url=%s", flv_url));
+
+        // the pts for video and audio encoder.
+        presentationTimeUs = new Date().getTime() * 1000;
+
+        // open mic, to find the work one.
+        if ((mic = findAudioRecord(onPcmFrame)) == null) {
+            Log.e(TAG, String.format("mic find device mode failed."));
+            return;
+        }
+
+        // aencoder yuv to aac raw stream.
+        // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
+        try {
+            aencoder = MediaCodec.createEncoderByType(ACODEC);
+        } catch (IOException e) {
+            Log.e(TAG, "create aencoder failed.");
+            e.printStackTrace();
+            return;
+        }
+        aebi = new MediaCodec.BufferInfo();
+
+        // setup the aencoder.
+        // @see https://developer.android.com/reference/android/media/MediaCodec.html
+        MediaFormat aformat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, asample_rate, achannel);
+        aformat.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * ABITRATE_KBPS);
+        aformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+        aencoder.configure(aformat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+
+        // add the video tracker to muxer.
+        atrack = muxer.addTrack(aformat);
+        Log.i(TAG, String.format("muxer add audio track index=%d", atrack));
 
         // open camera.
         camera = Camera.open(0);
@@ -294,17 +326,6 @@ public class MainActivity extends Activity {
         camera.setDisplayOrientation(90);
         camera.setParameters(parameters);
 
-        // start the muxer to POST stream to SRS over HTTP FLV.
-        muxer = new SrsHttpFlv(flv_url, SrsHttpFlv.OutputFormat.MUXER_OUTPUT_HTTP_FLV);
-        try {
-            muxer.start();
-        } catch (IOException e) {
-            Log.e(TAG, "start muxer failed.");
-            e.printStackTrace();
-            return;
-        }
-        Log.i(TAG, String.format("start muxer to SRS over HTTP FLV, url=%s", flv_url));
-
         // vencoder yuv to 264 es stream.
         // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
         try {
@@ -314,30 +335,27 @@ public class MainActivity extends Activity {
             e.printStackTrace();
             return;
         }
-        ebi = new MediaCodec.BufferInfo();
-        presentationTimeUs = new Date().getTime() * 1000;
+        vebi = new MediaCodec.BufferInfo();
 
-        // start the vencoder.
+        // setup the vencoder.
         vcolor = chooseColorFormat();
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
-        MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
-        format.setInteger(MediaFormat.KEY_COLOR_FORMAT, vcolor);
-        format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
-        format.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * vbitrate_kbps);
-        format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
-        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
-        vencoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-        Log.i(TAG, "start avc vencoder");
-        vencoder.start();
+        MediaFormat vformat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
+        vformat.setInteger(MediaFormat.KEY_COLOR_FORMAT, vcolor);
+        vformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+        vformat.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * vbitrate_kbps);
+        vformat.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
+        vformat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+        vencoder.configure(vformat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
         // add the video tracker to muxer.
-        videoTrack = muxer.addTrack(format);
-        Log.i(TAG, String.format("muxer add video track index=%d", videoTrack));
+        vtrack = muxer.addTrack(vformat);
+        Log.i(TAG, String.format("muxer add video track index=%d", vtrack));
 
         // set the callback and start the preview.
-        buffer = new byte[getYuvBuffer(size.width, size.height)];
-        camera.addCallbackBuffer(buffer);
-        camera.setPreviewCallbackWithBuffer(onYuvFrame);
+        vbuffer = new byte[getYuvBuffer(size.width, size.height)];
+        camera.addCallbackBuffer(vbuffer);
+        camera.setPreviewCallbackWithBuffer((Camera.PreviewCallback) onYuvFrame);
         try {
             camera.setPreviewDisplay(holder);
         } catch (IOException e) {
@@ -346,12 +364,24 @@ public class MainActivity extends Activity {
             return;
         }
 
-        Log.i(TAG, String.format("start to preview video in %dx%d, buffer %dB", size.width, size.height, buffer.length));
+        // start device then encoder.
+        Log.i(TAG, String.format("start to preview video in %dx%d, vbuffer %dB", size.width, size.height, vbuffer.length));
         camera.startPreview();
+        Log.i(TAG, String.format("start the mic in rate=%dHZ, channels=%d, format=%d", asample_rate, achannel, abits));
+        mic.startRecording();
+        Log.i(TAG, "start avc vencoder");
+        vencoder.start();
+        Log.i(TAG, "start aac aencoder");
+        aencoder.start();
+
+        // read something to trigger the mic.
+        mic.read(abuffer, 0, abuffer.length);
     }
 
     private void dispose() {
         if (mic != null) {
+            Log.i(TAG, "stop mic");
+            mic.setRecordPositionUpdateListener(null);
             mic.stop();
             mic.release();
             mic = null;
@@ -363,6 +393,13 @@ public class MainActivity extends Activity {
             camera.stopPreview();
             camera.release();
             camera = null;
+        }
+
+        if (aencoder != null) {
+            Log.i(TAG, "stop aencoder");
+            aencoder.stop();
+            aencoder.release();
+            aencoder = null;
         }
 
         if (vencoder != null) {
@@ -416,7 +453,144 @@ public class MainActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
-    // for the buffer for YV12(android YUV), @see below:
+    // when got encoded h264 es stream.
+    private void onEncodedAnnexbFrame(ByteBuffer es, MediaCodec.BufferInfo bi) {
+        try {
+            muxer.writeSampleData(vtrack, es, bi);
+        } catch (Exception e) {
+            Log.e(TAG, "muxer write video sample failed.");
+            e.printStackTrace();
+        }
+    }
+
+    private void onGetYuvFrame(byte[] data) {
+        //Log.i(TAG, String.format("got YUV image, size=%d", data.length));
+
+        // feed the vencoder with yuv frame, got the encoded 264 es stream.
+        ByteBuffer[] inBuffers = vencoder.getInputBuffers();
+        ByteBuffer[] outBuffers = vencoder.getOutputBuffers();
+
+        if (true) {
+            int inBufferIndex = vencoder.dequeueInputBuffer(-1);
+            //Log.i(TAG, String.format("try to dequeue input vbuffer, ii=%d", inBufferIndex));
+            if (inBufferIndex >= 0) {
+                ByteBuffer bb = inBuffers[inBufferIndex];
+                bb.clear();
+                bb.put(data, 0, data.length);
+                long pts = new Date().getTime() * 1000 - presentationTimeUs;
+                //Log.i(TAG, String.format("feed YUV to encode %dB, pts=%d", data.length, pts / 1000));
+                vencoder.queueInputBuffer(inBufferIndex, 0, data.length, pts, 0);
+            }
+        }
+
+        for (;;) {
+            int outBufferIndex = vencoder.dequeueOutputBuffer(vebi, 0);
+            //Log.i(TAG, String.format("try to dequeue output vbuffer, ii=%d, oi=%d", inBufferIndex, outBufferIndex));
+            if (outBufferIndex >= 0) {
+                ByteBuffer bb = outBuffers[outBufferIndex];
+                onEncodedAnnexbFrame(bb, vebi);
+                vencoder.releaseOutputBuffer(outBufferIndex, false);
+            }
+
+            if (outBufferIndex < 0) {
+                break;
+            }
+        }
+    }
+
+    // when got encoded aac raw stream.
+    private void onEncodedAacFrame(ByteBuffer es, MediaCodec.BufferInfo bi) {
+        try {
+            muxer.writeSampleData(atrack, es, bi);
+        } catch (Exception e) {
+            Log.e(TAG, "muxer write audio sample failed.");
+            e.printStackTrace();
+        }
+    }
+
+    private void onGetPcmFrame(byte[] data) {
+        //Log.i(TAG, String.format("got PCM audio, size=%d", data.length));
+
+        // feed the aencoder with yuv frame, got the encoded 264 es stream.
+        ByteBuffer[] inBuffers = aencoder.getInputBuffers();
+        ByteBuffer[] outBuffers = aencoder.getOutputBuffers();
+
+        if (true) {
+            int inBufferIndex = aencoder.dequeueInputBuffer(-1);
+            //Log.i(TAG, String.format("try to dequeue input vbuffer, ii=%d", inBufferIndex));
+            if (inBufferIndex >= 0) {
+                ByteBuffer bb = inBuffers[inBufferIndex];
+                bb.clear();
+                bb.put(data, 0, data.length);
+                long pts = new Date().getTime() * 1000 - presentationTimeUs;
+                //Log.i(TAG, String.format("feed PCM to encode %dB, pts=%d", data.length, pts / 1000));
+                aencoder.queueInputBuffer(inBufferIndex, 0, data.length, pts, 0);
+            }
+        }
+
+        for (; ; ) {
+            int outBufferIndex = aencoder.dequeueOutputBuffer(aebi, 0);
+            //Log.i(TAG, String.format("try to dequeue output vbuffer, ii=%d, oi=%d", inBufferIndex, outBufferIndex));
+            if (outBufferIndex >= 0) {
+                ByteBuffer bb = outBuffers[outBufferIndex];
+                onEncodedAacFrame(bb, aebi);
+                aencoder.releaseOutputBuffer(outBufferIndex, false);
+            } else {
+                break;
+            }
+        }
+    }
+
+    // @remark thanks for baozi.
+    public AudioRecord findAudioRecord(Object onPcmFrame) {
+        int[] sampleRates = {44100, 22050, 11025, 8000};
+        for (int sampleRate : sampleRates) {
+            int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
+            int channelConfig = AudioFormat.CHANNEL_CONFIGURATION_MONO;
+
+            int bSamples = 8;
+            if (audioFormat == AudioFormat.ENCODING_PCM_16BIT) {
+                bSamples = 16;
+            }
+
+            int nChannels = 2;
+            if (channelConfig == AudioFormat.CHANNEL_CONFIGURATION_MONO) {
+                nChannels = 1;
+            }
+
+            int framePeriod = sampleRate * ATIMER_INTERVAL / 1000;
+            int bufferSize = framePeriod * 2 * bSamples * nChannels / 8;
+            // Check to make sure buffer size is not smaller than the smallest allowed one
+            if (bufferSize < AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)) {
+                bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+                // Set frame period and timer interval accordingly
+                framePeriod = bufferSize / (2 * bSamples * nChannels / 8);
+                Log.w(TAG, "Increasing buffer size to " + Integer.toString(bufferSize));
+            }
+
+            AudioRecord audioRecorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, bufferSize);
+
+            if (audioRecorder.getState() != AudioRecord.STATE_INITIALIZED) {
+                Log.e(TAG, "initialize the mic failed.");
+                continue;
+            }
+            audioRecorder.setRecordPositionUpdateListener((AudioRecord.OnRecordPositionUpdateListener) onPcmFrame);
+            audioRecorder.setPositionNotificationPeriod(framePeriod);
+
+            asample_rate = sampleRate;
+            abits = audioFormat;
+            achannel = channelConfig;
+            mic = audioRecorder;
+            abuffer = new byte[AudioRecord.getMinBufferSize(asample_rate, achannel, abits)];
+            Log.i(TAG, String.format("mic open rate=%dHZ, channels=%d, format=%d, buffer=%d/%d, state=%d",
+                    sampleRate, channelConfig, audioFormat, bufferSize, abuffer.length, audioRecorder.getState()));
+            break;
+        }
+
+        return mic;
+    }
+
+    // for the vbuffer for YV12(android YUV), @see below:
     // https://developer.android.com/reference/android/hardware/Camera.Parameters.html#setPreviewFormat(int)
     // https://developer.android.com/reference/android/graphics/ImageFormat.html#YV12
     private int getYuvBuffer(int width, int height) {
