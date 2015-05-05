@@ -173,34 +173,22 @@ public class MainActivity extends Activity {
                 // feed the frame to vencoder and muxer.
                 onGetYuvFrame(frame);
 
+                // to read audio data, anti block the ui.
+                for (int i = 0; i < 1 && mic != null; i++) {
+                    int size = mic.read(abuffer, 0, abuffer.length);
+                    if (size <= 0) {
+                        Log.i(TAG, "audio ignore, no data to read.");
+                        break;
+                    }
+
+                    byte[] audio = new byte[size];
+                    System.arraycopy(abuffer, 0, audio, 0, size);
+
+                    onGetPcmFrame(audio);
+                }
+
                 // to fetch next frame.
                 camera.addCallbackBuffer(vbuffer);
-            }
-        };
-
-        // the audio pcm frame callback.
-        final Object onPcmFrame = new AudioRecord.OnRecordPositionUpdateListener() {
-            @Override
-            public void onMarkerReached(AudioRecord recorder) {
-            }
-            @Override
-            public void onPeriodicNotification(AudioRecord recorder) {
-                if (mic == null) {
-                    return;
-                }
-
-                int size = mic.read(abuffer, 0, abuffer.length);
-                //Log.i(TAG, String.format("mic got %dB pcm frame", size));
-
-                if (size <= 0) {
-                    return;
-                }
-
-                byte[] frame = new byte[size];
-                System.arraycopy(abuffer, 0, frame, 0, size);
-
-                // feed the frame to aencoder and muxer.
-                onGetPcmFrame(frame);
             }
         };
 
@@ -225,14 +213,14 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 dispose();
-                publish(onYuvFrame, onPcmFrame, preview.getHolder());
+                publish(onYuvFrame, preview.getHolder());
                 btnPublish.setEnabled(false);
                 btnStop.setEnabled(true);
             }
         });
     }
 
-    private void publish(Object onYuvFrame, Object onPcmFrame, SurfaceHolder holder) {
+    private void publish(Object onYuvFrame, SurfaceHolder holder) {
         if (vbitrate_kbps <= 10) {
             Log.e(TAG, String.format("video bitrate must 10kbps+, actual is %d", vbitrate_kbps));
             return;
@@ -261,7 +249,7 @@ public class MainActivity extends Activity {
         presentationTimeUs = new Date().getTime() * 1000;
 
         // open mic, to find the work one.
-        if ((mic = findAudioRecord(onPcmFrame)) == null) {
+        if ((mic = findAudioRecord()) == null) {
             Log.e(TAG, String.format("mic find device mode failed."));
             return;
         }
@@ -373,9 +361,6 @@ public class MainActivity extends Activity {
         vencoder.start();
         Log.i(TAG, "start aac aencoder");
         aencoder.start();
-
-        // read something to trigger the mic.
-        mic.read(abuffer, 0, abuffer.length);
     }
 
     private void dispose() {
@@ -516,7 +501,7 @@ public class MainActivity extends Activity {
         ByteBuffer[] outBuffers = aencoder.getOutputBuffers();
 
         if (true) {
-            int inBufferIndex = aencoder.dequeueInputBuffer(-1);
+            int inBufferIndex = aencoder.dequeueInputBuffer(0);
             //Log.i(TAG, String.format("try to dequeue input vbuffer, ii=%d", inBufferIndex));
             if (inBufferIndex >= 0) {
                 ByteBuffer bb = inBuffers[inBufferIndex];
@@ -528,7 +513,7 @@ public class MainActivity extends Activity {
             }
         }
 
-        for (; ; ) {
+        for (;;) {
             int outBufferIndex = aencoder.dequeueOutputBuffer(aebi, 0);
             //Log.i(TAG, String.format("try to dequeue output vbuffer, ii=%d, oi=%d", inBufferIndex, outBufferIndex));
             if (outBufferIndex >= 0) {
@@ -542,7 +527,7 @@ public class MainActivity extends Activity {
     }
 
     // @remark thanks for baozi.
-    public AudioRecord findAudioRecord(Object onPcmFrame) {
+    public AudioRecord findAudioRecord() {
         int[] sampleRates = {44100, 22050, 11025, 8000};
         for (int sampleRate : sampleRates) {
             int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
@@ -558,24 +543,15 @@ public class MainActivity extends Activity {
                 nChannels = 1;
             }
 
-            int framePeriod = sampleRate * ATIMER_INTERVAL / 1000;
-            int bufferSize = framePeriod * 2 * bSamples * nChannels / 8;
-            // Check to make sure buffer size is not smaller than the smallest allowed one
-            if (bufferSize < AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)) {
-                bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-                // Set frame period and timer interval accordingly
-                framePeriod = bufferSize / (2 * bSamples * nChannels / 8);
-                Log.w(TAG, "Increasing buffer size to " + Integer.toString(bufferSize));
-            }
-
+            int bufferSize = 2 * bSamples * nChannels / 8;
+            int minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+            bufferSize = Math.max(bufferSize, minBufferSize);
             AudioRecord audioRecorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, bufferSize);
 
             if (audioRecorder.getState() != AudioRecord.STATE_INITIALIZED) {
                 Log.e(TAG, "initialize the mic failed.");
                 continue;
             }
-            audioRecorder.setRecordPositionUpdateListener((AudioRecord.OnRecordPositionUpdateListener) onPcmFrame);
-            audioRecorder.setPositionNotificationPeriod(framePeriod);
 
             asample_rate = sampleRate;
             abits = audioFormat;

@@ -124,7 +124,7 @@ public class SrsHttpFlv {
      * @param bufferInfo The buffer information related to this sample.
      */
     public void writeSampleData(int trackIndex, ByteBuffer byteBuf, MediaCodec.BufferInfo bufferInfo) throws Exception {
-        //Log.i(TAG, String.format("dumps the %s stream %dB, pts=%d", (trackIndex == VIDEO_TRACK)? "Vdieo":"Audio", bufferInfo.size, bufferInfo.presentationTimeUs / 1000));
+        //Log.i(TAG, String.format("dumps the %s stream %dB, pts=%d", (trackIndex == VIDEO_TRACK) ? "Vdieo" : "Audio", bufferInfo.size, bufferInfo.presentationTimeUs / 1000));
         //SrsHttpFlv.SrsUtils utils = new SrsHttpFlv.SrsUtils();
         //utils.srs_print_bytes(byteBuf, bufferInfo.size);
 
