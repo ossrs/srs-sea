@@ -5,8 +5,8 @@ The android live publisher to SRS over HTTP-FLV.
 
 * Only java files, without any native code.
 * Realtime live streaming, similar to RTMP.
-* POST HTTP FLV stream to SRS.
-* Hardware encoding.
+* Stable for POST HTTP FLV stream to SRS.
+* Hardware encoding with low cpu usage.
 
 ## Requirements
 
@@ -21,11 +21,13 @@ The workflow of the android publisher is:
 1. Remux the annexb to flv stream.
 1. HTTP POST the flv stream to SRS.
 
-## Show
+## Low Latency
+
+The latency is same to RTMP, 0.8s in lan and 3-5s in wan.
 
 ![0.8s latency](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.delay.jpg)
 
-The latency is same to RTMP, 0.8s in lan and 3-5s in wan.
+## Lightweight
 
 ![800kbps](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.800kbps.jpg)
 
