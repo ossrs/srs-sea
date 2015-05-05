@@ -36,6 +36,10 @@ public class MainActivity extends Activity {
     private MediaCodec aencoder;
     private MediaCodec.BufferInfo aebi;
 
+    // use worker thread to get audio packet.
+    private Thread aworker;
+    private boolean aloop;
+
     // audio mic settings.
     private int asample_rate;
     private int achannel;
@@ -64,6 +68,8 @@ public class MainActivity extends Activity {
     private String flv_url = "http://192.168.1.144:8936/live/livestream.flv";
     // the bitrate in kbps.
     private int vbitrate_kbps = 125;
+    private final static int VFPS = 20;
+    private final static int VGOP = 5;
 
     // encoding params.
     private long presentationTimeUs;
@@ -172,20 +178,6 @@ public class MainActivity extends Activity {
                 // feed the frame to vencoder and muxer.
                 onGetYuvFrame(frame);
 
-                // to read audio data, anti block the ui.
-                for (int i = 0; i < 5 && mic != null; i++) {
-                    int size = mic.read(abuffer, 0, abuffer.length);
-                    if (size <= 0) {
-                        Log.i(TAG, "audio ignore, no data to read.");
-                        break;
-                    }
-
-                    byte[] audio = new byte[size];
-                    System.arraycopy(abuffer, 0, audio, 0, size);
-
-                    onGetPcmFrame(audio);
-                }
-
                 // to fetch next frame.
                 camera.addCallbackBuffer(vbuffer);
             }
@@ -267,6 +259,7 @@ public class MainActivity extends Activity {
         // setup the aencoder.
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
         MediaFormat aformat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, asample_rate, achannel);
+        //aformat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectMain);
         aformat.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * ABITRATE_KBPS);
         aformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
         aencoder.configure(aformat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -331,8 +324,8 @@ public class MainActivity extends Activity {
         vformat.setInteger(MediaFormat.KEY_COLOR_FORMAT, vcolor);
         vformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
         vformat.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * vbitrate_kbps);
-        vformat.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
-        vformat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+        vformat.setInteger(MediaFormat.KEY_FRAME_RATE, VFPS);
+        vformat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, VGOP);
         vencoder.configure(vformat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
         // add the video tracker to muxer.
@@ -360,9 +353,43 @@ public class MainActivity extends Activity {
         vencoder.start();
         Log.i(TAG, "start aac aencoder");
         aencoder.start();
+
+        // start audio worker thread.
+        aworker = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (aloop && mic != null && !Thread.interrupted()) {
+                    int size = mic.read(abuffer, 0, abuffer.length);
+                    if (size <= 0) {
+                        Log.i(TAG, "audio ignore, no data to read.");
+                        break;
+                    }
+
+                    byte[] audio = new byte[size];
+                    System.arraycopy(abuffer, 0, audio, 0, size);
+
+                    onGetPcmFrame(audio);
+                }
+            }
+        });
+        Log.i(TAG, "start audio worker thread.");
+        aloop = true;
+        aworker.start();
     }
 
     private void dispose() {
+        aloop = false;
+        if (aworker != null) {
+            Log.i(TAG, "stop audio worker thread");
+            aworker.interrupt();
+            try {
+                aworker.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            aworker = null;
+        }
+
         if (mic != null) {
             Log.i(TAG, "stop mic");
             mic.setRecordPositionUpdateListener(null);
@@ -500,7 +527,7 @@ public class MainActivity extends Activity {
         ByteBuffer[] outBuffers = aencoder.getOutputBuffers();
 
         if (true) {
-            int inBufferIndex = aencoder.dequeueInputBuffer(0);
+            int inBufferIndex = aencoder.dequeueInputBuffer(-1);
             //Log.i(TAG, String.format("try to dequeue input vbuffer, ii=%d", inBufferIndex));
             if (inBufferIndex >= 0) {
                 ByteBuffer bb = inBuffers[inBufferIndex];
@@ -542,9 +569,8 @@ public class MainActivity extends Activity {
                 nChannels = 1;
             }
 
-            int bufferSize = 2 * bSamples * nChannels / 8;
-            int minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-            bufferSize = Math.max(bufferSize, minBufferSize);
+            //int bufferSize = 2 * bSamples * nChannels / 8;
+            int bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
             AudioRecord audioRecorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, bufferSize);
 
             if (audioRecorder.getState() != AudioRecord.STATE_INITIALIZED) {

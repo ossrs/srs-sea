@@ -1158,8 +1158,47 @@ public class SrsHttpFlv {
             byte[] frame = new byte[bi.size + 2];
             byte aac_packet_type = 1; // 1 = AAC raw
             if (aac_specific_config == null) {
+                frame = new byte[4];
+
+                // @see aac-mp4a-format-ISO_IEC_14496-3+2001.pdf
+                // AudioSpecificConfig (), page 33
+                // 1.6.2.1 AudioSpecificConfig
+                // audioObjectType; 5 bslbf
+                byte ch = (byte)(bb.get(0) & 0xf8);
+                // 3bits left.
+
+                // samplingFrequencyIndex; 4 bslbf
+                byte samplingFrequencyIndex = 0x04;
+                if (asample_rate == SrsCodecAudioSampleRate.R22050) {
+                    samplingFrequencyIndex = 0x07;
+                } else if (asample_rate == SrsCodecAudioSampleRate.R11025) {
+                    samplingFrequencyIndex = 0x0a;
+                }
+                ch |= (samplingFrequencyIndex >> 1) & 0x07;
+                frame[2] = ch;
+
+                ch = (byte)((samplingFrequencyIndex << 7) & 0x80);
+                // 7bits left.
+
+                // channelConfiguration; 4 bslbf
+                byte channelConfiguration = 1;
+                if (achannel == AudioFormat.CHANNEL_IN_STEREO) {
+                    channelConfiguration = 2;
+                }
+                ch |= (channelConfiguration << 3) & 0x78;
+                // 3bits left.
+
+                // GASpecificConfig(), page 451
+                // 4.4.1 Decoder configuration (GASpecificConfig)
+                // frameLengthFlag; 1 bslbf
+                // dependsOnCoreCoder; 1 bslbf
+                // extensionFlag; 1 bslbf
+                frame[3] = ch;
+
                 aac_specific_config = frame;
                 aac_packet_type = 0; // 0 = AAC sequence header
+            } else {
+                bb.get(frame, 2, frame.length - 2);
             }
 
             byte sound_format = 10; // AAC
@@ -1185,7 +1224,6 @@ public class SrsHttpFlv {
 
             frame[0] = audio_header;
             frame[1] = aac_packet_type;
-            bb.get(frame, 2, frame.length - 2);
 
             SrsFlvFrameBytes tag = new SrsFlvFrameBytes();
             tag.frame = ByteBuffer.wrap(frame);
