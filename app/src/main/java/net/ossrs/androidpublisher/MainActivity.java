@@ -173,7 +173,7 @@ public class MainActivity extends Activity {
                 onGetYuvFrame(frame);
 
                 // to read audio data, anti block the ui.
-                for (int i = 0; i < 1 && mic != null; i++) {
+                for (int i = 0; i < 5 && mic != null; i++) {
                     int size = mic.read(abuffer, 0, abuffer.length);
                     if (size <= 0) {
                         Log.i(TAG, "audio ignore, no data to read.");
@@ -558,7 +558,7 @@ public class MainActivity extends Activity {
             mic = audioRecorder;
             abuffer = new byte[AudioRecord.getMinBufferSize(asample_rate, achannel, abits)];
             Log.i(TAG, String.format("mic open rate=%dHZ, channels=%d, format=%d, buffer=%d/%d, state=%d",
-                    sampleRate, channelConfig, audioFormat, bufferSize, abuffer.length, audioRecorder.getState()));
+                    sampleRate, nChannels, audioFormat, bufferSize, abuffer.length, audioRecorder.getState()));
             break;
         }
 

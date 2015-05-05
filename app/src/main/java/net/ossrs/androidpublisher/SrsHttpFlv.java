@@ -14,6 +14,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 /**
  * Created by winlin on 5/2/15.
@@ -34,6 +36,10 @@ public class SrsHttpFlv {
     private SrsFlvFrame videoSequenceHeader;
     private SrsFlvFrame audioSequenceHeader;
 
+    // use cache queue to ensure audio and video monotonically increase.
+    private ArrayList<SrsFlvFrame> cache;
+    private int nb_videos;
+
     private static final int VIDEO_TRACK = 100;
     private static final int AUDIO_TRACK = 101;
     private static final String TAG = "SrsMuxer";
@@ -46,6 +52,7 @@ public class SrsHttpFlv {
     public SrsHttpFlv(String path, int format) {
         url = path;
         flv = new SrsFlv();
+        cache = new ArrayList<SrsFlvFrame>();
     }
 
     /**
@@ -94,6 +101,9 @@ public class SrsHttpFlv {
      * stop the muxer, disconnect HTTP connection from SRS.
      */
     public void stop() {
+        nb_videos = 0;
+        cache.clear();
+
         if (worker == null && conn == null) {
             return;
         }
@@ -241,12 +251,6 @@ public class SrsHttpFlv {
             return;
         }
 
-        if (frame.is_keyframe()) {
-            Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
-        } else {
-            Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
-        }
-
         // cache the sequence header.
         if (frame.type == SrsCodecFlvTag.Video && frame.avc_aac_type == SrsCodecVideoAVCType.SequenceHeader) {
             videoSequenceHeader = frame;
@@ -258,40 +262,74 @@ public class SrsHttpFlv {
             return;
         }
 
-        // write the 11B flv tag header
-        ByteBuffer th = ByteBuffer.allocate(11);
-        // Reserved UB [2]
-        // Filter UB [1]
-        // TagType UB [5]
-        // DataSize UI24
-        int tag_size = (int)((frame.tag.size & 0x00FFFFFF) | ((frame.type & 0x1F) << 24));
-        th.putInt(tag_size);
-        // Timestamp UI24
-        // TimestampExtended UI8
-        int time = (int)((frame.dts << 8) & 0xFFFFFF00) | ((frame.dts >> 24) & 0x000000FF);
-        th.putInt(time);
-        // StreamID UI24 Always 0.
-        th.put((byte)0);
-        th.put((byte)0);
-        th.put((byte)0);
-        bos.write(th.array());
+        if (frame.is_video()) {
+            nb_videos++;
+        }
+        cache.add(frame);
 
-        // write the flv tag data.
-        byte[] data = frame.tag.frame.array();
-        bos.write(data, 0, frame.tag.size);
+        // always keep 2+ videos in cache.
+        if (nb_videos > 2) {
+            sendCachedFrames();
+        }
+    }
 
-        // write the 4B previous tag size.
-        // @remark, we append the tag size, this is different to SRS which write RTMP packet.
-        ByteBuffer pps = ByteBuffer.allocate(4);
-        pps.putInt((int)(frame.tag.size + 11));
-        bos.write(pps.array());
+    private void sendCachedFrames() throws IOException {
+        Collections.sort(cache, new Comparator<SrsFlvFrame>() {
+            @Override
+            public int compare(SrsFlvFrame lhs, SrsFlvFrame rhs) {
+                return lhs.dts - rhs.dts;
+            }
+        });
+
+        while (nb_videos > 2) {
+            SrsFlvFrame frame = cache.remove(0);
+
+            if (frame.is_video()) {
+                nb_videos--;
+            }
+
+            if (frame.is_keyframe()) {
+                Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+            } else {
+                //Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+            }
+
+            // write the 11B flv tag header
+            ByteBuffer th = ByteBuffer.allocate(11);
+            // Reserved UB [2]
+            // Filter UB [1]
+            // TagType UB [5]
+            // DataSize UI24
+            int tag_size = (int) ((frame.tag.size & 0x00FFFFFF) | ((frame.type & 0x1F) << 24));
+            th.putInt(tag_size);
+            // Timestamp UI24
+            // TimestampExtended UI8
+            int time = (int) ((frame.dts << 8) & 0xFFFFFF00) | ((frame.dts >> 24) & 0x000000FF);
+            th.putInt(time);
+            // StreamID UI24 Always 0.
+            th.put((byte) 0);
+            th.put((byte) 0);
+            th.put((byte) 0);
+            bos.write(th.array());
+
+            // write the flv tag data.
+            byte[] data = frame.tag.frame.array();
+            bos.write(data, 0, frame.tag.size);
+
+            // write the 4B previous tag size.
+            // @remark, we append the tag size, this is different to SRS which write RTMP packet.
+            ByteBuffer pps = ByteBuffer.allocate(4);
+            pps.putInt((int) (frame.tag.size + 11));
+            bos.write(pps.array());
+
+            if (frame.is_keyframe()) {
+                Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB, tag_size=%#x, time=%#x",
+                        frame.type, frame.dts, frame.tag.size, tag_size, time
+                ));
+            }
+        }
 
         bos.flush();
-        if (frame.is_keyframe()) {
-            Log.i(TAG, String.format("worker: send frame type=%d, dts=%d, size=%dB, tag_size=%#x, time=%#x",
-                    frame.type, frame.dts, frame.tag.size, tag_size, time
-            ));
-        }
     }
 
     /**
@@ -629,6 +667,10 @@ public class SrsHttpFlv {
 
         public boolean is_keyframe() {
             return type == SrsCodecFlvTag.Video && frame_type == SrsCodecVideoAVCFrame.KeyFrame;
+        }
+
+        public boolean is_video() {
+            return type == SrsCodecFlvTag.Video;
         }
     }
 
