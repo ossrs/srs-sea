@@ -43,6 +43,8 @@ public class MainActivity extends Activity {
     //private String flv_url = "http://192.168.1.137:8936/live/livestream.flv";
     //private String flv_url = "http://192.168.2.111:8936/live/livestream.flv";
     private String flv_url = "http://192.168.1.144:8936/live/livestream.flv";
+    // the bitrate in kbps.
+    private int vbitrate_kbps = 125;
 
     private static final String TAG = "SrsPublisher";
     private static final String VCODEC = "video/avc";
@@ -197,7 +199,8 @@ public class MainActivity extends Activity {
 
         // restore data.
         flv_url = sp.getString("FLV_URL", flv_url);
-        Log.i(TAG, String.format("initialize flv url to %s", flv_url));
+        vbitrate_kbps = sp.getInt("VBITRATE", vbitrate_kbps);
+        Log.i(TAG, String.format("initialize flv url to %s, vbitrate=%dkbps", flv_url, vbitrate_kbps));
 
         // initialize url.
         final EditText efu = (EditText)findViewById(R.id.flv_url);
@@ -212,7 +215,7 @@ public class MainActivity extends Activity {
             @Override
             public void afterTextChanged(Editable s) {
                 String fu = efu.getText().toString();
-                if (fu == flv_url) {
+                if (fu == flv_url || fu.isEmpty()) {
                     return;
                 }
 
@@ -221,6 +224,31 @@ public class MainActivity extends Activity {
 
                 SharedPreferences.Editor editor = sp.edit();
                 editor.putString("FLV_URL", flv_url);
+                editor.commit();
+            }
+        });
+
+        final EditText evb = (EditText)findViewById(R.id.vbitrate);
+        evb.setText(String.format("%dkbps", vbitrate_kbps));
+        evb.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+            @Override
+            public void afterTextChanged(Editable s) {
+                int vb = Integer.parseInt(evb.getText().toString().replaceAll("kbps", ""));
+                if (vb == vbitrate_kbps) {
+                    return;
+                }
+
+                vbitrate_kbps = vb;
+                Log.i(TAG, String.format("video bitrate changed to %d", vbitrate_kbps));
+
+                SharedPreferences.Editor editor = sp.edit();
+                editor.putInt("VBITRATE", vbitrate_kbps);
                 editor.commit();
             }
         });
@@ -280,6 +308,19 @@ public class MainActivity extends Activity {
     }
 
     private void publish(Camera.PreviewCallback onYuvFrame, SurfaceHolder holder) {
+        if (vbitrate_kbps <= 10) {
+            Log.e(TAG, String.format("video bitrate must 10kbps+, actual is %d", vbitrate_kbps));
+            return;
+        }
+        if (!flv_url.startsWith("http://")) {
+            Log.e(TAG, String.format("flv url must starts with http://, actual is %s", flv_url));
+            return;
+        }
+        if (!flv_url.endsWith(".flv")) {
+            Log.e(TAG, String.format("flv url must ends with .flv, actual is %s", flv_url));
+            return;
+        }
+
         camera = Camera.open(0);
         Camera.Parameters parameters = camera.getParameters();
 
@@ -344,11 +385,11 @@ public class MainActivity extends Activity {
         vcolor = chooseColorFormat();
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
         MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
-        format.setInteger(MediaFormat.KEY_BIT_RATE, 125000);
-        format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, vcolor);
-        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
         format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+        format.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * vbitrate_kbps);
+        format.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
+        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
         encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         Log.i(TAG, "start avc encoder");
         encoder.start();
