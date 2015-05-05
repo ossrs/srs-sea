@@ -166,8 +166,7 @@ public class MainActivity extends Activity {
                 } else if (vcolor == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) {
                     YV12toYUV420PackedSemiPlanar(data, frame, vsize.width, vsize.height);
                 } else {
-                    frame = data;
-                    //System.arraycopy(data, 0, frame, 0, data.length);
+                    System.arraycopy(data, 0, frame, 0, data.length);
                 }
 
                 // feed the frame to vencoder and muxer.
@@ -528,7 +527,7 @@ public class MainActivity extends Activity {
 
     // @remark thanks for baozi.
     public AudioRecord findAudioRecord() {
-        int[] sampleRates = {44100, 22050, 11025, 8000};
+        int[] sampleRates = {44100, 22050, 11025};
         for (int sampleRate : sampleRates) {
             int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
             int channelConfig = AudioFormat.CHANNEL_CONFIGURATION_MONO;
