@@ -5,7 +5,7 @@ The android live publisher to SRS over HTTP-FLV.
 
 * Only java files, without any native code.
 * Realtime live streaming, similar to RTMP.
-* Stable for POST HTTP FLV stream to SRS.
+* Stable for POST HTTP FLV stream to [SRS](https://github.com/simple-rtmp-server/srs).
 * Hardware encoding with low cpu usage.
 
 ## Requirements
