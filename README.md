@@ -5,7 +5,7 @@ The android live publisher to SRS over HTTP-FLV.
 
 The latest dev apk http://ossrs.net//sea.latest.apk
 
-Play the RTMP: http://www.ossrs.net/players/srs_player.html?vhost=ossrs.net&port=19351&stream=sea&server=ossrs.net&autostart=true
+Play the [RTMP stream]( http://www.ossrs.net/players/srs_player.html?vhost=ossrs.net&port=19351&stream=sea&server=ossrs.net&autostart=true)
 
 ## Features
 
