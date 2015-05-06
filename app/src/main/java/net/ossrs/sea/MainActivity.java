@@ -1,4 +1,4 @@
-package net.ossrs.androidpublisher;
+package net.ossrs.sea;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
@@ -23,6 +23,8 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+
+import net.ossrs.sea.R;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -68,11 +70,11 @@ public class MainActivity extends Activity {
     //private String flv_url = "http://192.168.2.111:8936/live/livestream.flv";
     private String flv_url = "http://192.168.1.144:8936/live/livestream.flv";
     // the bitrate in kbps.
-    private int vbitrate_kbps = 500;
+    private int vbitrate_kbps = 300;
     private final static int VFPS = 25;
     private final static int VGOP = 5;
-    private final static int VWIDTH = 1280;
-    private final static int VHEIGHT = 720;
+    private final static int VWIDTH = 640;
+    private final static int VHEIGHT = 480;
 
     // encoding params.
     private long presentationTimeUs;

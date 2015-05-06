@@ -1,4 +1,4 @@
-package net.ossrs.androidpublisher;
+package net.ossrs.sea;
 
 import android.media.AudioFormat;
 import android.media.MediaCodec;

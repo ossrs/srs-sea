@@ -1,4 +1,4 @@
-package net.ossrs.androidpublisher;
+package net.ossrs.sea;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

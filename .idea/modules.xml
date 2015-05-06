@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/android-publisher.iml" filepath="$PROJECT_DIR$/android-publisher.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$USER_HOME$/Desktop/git/srs-sea/app/app.iml" filepath="$USER_HOME$/Desktop/git/srs-sea/app/app.iml" />
+      <module fileurl="file://$USER_HOME$/Desktop/git/srs-sea/srs-sea.iml" filepath="$USER_HOME$/Desktop/git/srs-sea/srs-sea.iml" />
     </modules>
   </component>
 </project>
