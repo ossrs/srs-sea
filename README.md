@@ -1,5 +1,5 @@
-# android-publisher
-The android live publisher to SRS over HTTP-FLV.
+# SEA
+The SEA(Stream Encoder for Android) publish live stream to SRS over HTTP-FLV.
 
 ## Download
 
