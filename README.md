@@ -7,7 +7,9 @@ The latest dev apk http://ossrs.net/apks/sea.latest.apk
 
 Play the [RTMP stream](http://www.ossrs.net/players/srs_player.html?vhost=hls&port=19351&stream=sea&server=ossrs.net&autostart=true)
 
-Play the [HLS stream](http://ossrs.net:8081/live/sea.html)
+Play the [HLS stream](http://ossrs.net:8081/live/sea.html), or scan the below code:
+
+![SEA HLS stream](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.jpg)
 
 ## Features
 
@@ -35,15 +37,15 @@ The workflow of the android publisher is:
 
 The latency is same to RTMP, 0.8s in lan and 3-5s in wan.
 
-![0.8s latency](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.delay1.jpg)
+![0.8s latency](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.delay1.jpg)
 
 ## Lightweight
 
-![800kbps](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.800kbps.jpg)
+![800kbps](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.800kbps.jpg)
 
 CPU 13% for publishing live to SRS over HTTP FLV, bitrate is 800kbps, fps is 25 and gop is 10s.
 
-![125kbps](https://github.com/simple-rtmp-server/android-publisher/wiki/images/ap.125kbps.jpg)
+![125kbps](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.125kbps.jpg)
 
 CPU 6% for publishing live to SRS over HTTP FLV, bitrate is 125kbps, fps is 15 and gop is 5s.
 
