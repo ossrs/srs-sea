@@ -266,7 +266,7 @@ public class MainActivity extends Activity {
         List<Camera.Size> sizes = parameters.getSupportedPictureSizes();
         for (int i = 0; i < sizes.size(); i++) {
             Camera.Size s = sizes.get(i);
-            Log.i(TAG, String.format("camera supported picture size %dx%d", s.width, s.height));
+            //Log.i(TAG, String.format("camera supported picture size %dx%d", s.width, s.height));
             if (size == null) {
                 if (s.height == VHEIGHT) {
                     size = s;
@@ -284,7 +284,7 @@ public class MainActivity extends Activity {
         sizes = parameters.getSupportedPreviewSizes();
         for (int i = 0; i < sizes.size(); i++) {
             Camera.Size s = sizes.get(i);
-            Log.i(TAG, String.format("camera supported preview size %dx%d", s.width, s.height));
+            //Log.i(TAG, String.format("camera supported preview size %dx%d", s.width, s.height));
             if (size == null) {
                 if (s.height == VHEIGHT) {
                     size = s;
@@ -700,7 +700,6 @@ public class MainActivity extends Activity {
             if ((cf >= cc.COLOR_FormatYUV411Planar && cf <= cc.COLOR_FormatYUV422SemiPlanar)) {
                 if (cf > matchedColorFormat) {
                     matchedColorFormat = cf;
-                    break;
                 }
             }
         }
