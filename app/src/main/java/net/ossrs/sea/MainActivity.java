@@ -65,10 +65,11 @@ public class MainActivity extends Activity {
     private int vtrack;
     private int vcolor;
 
+    private String flv_url = "http://ossrs.net:8936/live/sea.flv";
     //private String flv_url = "http://ossrs.net:8936/live/livestream.flv";
     //private String flv_url = "http://192.168.1.137:8936/live/livestream.flv";
     //private String flv_url = "http://192.168.2.111:8936/live/livestream.flv";
-    private String flv_url = "http://192.168.1.144:8936/live/livestream.flv";
+    //private String flv_url = "http://192.168.1.144:8936/live/livestream.flv";
     // the bitrate in kbps.
     private int vbitrate_kbps = 300;
     private final static int VFPS = 25;
@@ -239,7 +240,6 @@ public class MainActivity extends Activity {
         // setup the aencoder.
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
         MediaFormat aformat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, asample_rate, achannel);
-        //aformat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectMain);
         aformat.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * ABITRATE_KBPS);
         aformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
         aencoder.configure(aformat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -318,10 +318,8 @@ public class MainActivity extends Activity {
         // setup the vencoder.
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
         MediaFormat vformat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
-        //MediaFormat vformat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, 1280, 720);
-        //vformat.setInteger(MediaFormat.KEY_PROFILE, VPROFILE);
         vformat.setInteger(MediaFormat.KEY_COLOR_FORMAT, vcolor);
-        //vformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+        vformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
         vformat.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * vbitrate_kbps);
         vformat.setInteger(MediaFormat.KEY_FRAME_RATE, VFPS);
         vformat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, VGOP);
@@ -349,15 +347,15 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // start device then encoder.
-        Log.i(TAG, String.format("start to preview video in %dx%d, vbuffer %dB", size.width, size.height, vbuffer.length));
-        camera.startPreview();
-        Log.i(TAG, String.format("start the mic in rate=%dHZ, channels=%d, format=%d", asample_rate, achannel, abits));
-        mic.startRecording();
+        // start device and encoder.
         Log.i(TAG, "start avc vencoder");
         vencoder.start();
         Log.i(TAG, "start aac aencoder");
         aencoder.start();
+        Log.i(TAG, String.format("start to preview video in %dx%d, vbuffer %dB", size.width, size.height, vbuffer.length));
+        camera.startPreview();
+        Log.i(TAG, String.format("start the mic in rate=%dHZ, channels=%d, format=%d", asample_rate, achannel, abits));
+        mic.startRecording();
 
         // start audio worker thread.
         aworker = new Thread(new Runnable() {
@@ -390,7 +388,13 @@ public class MainActivity extends Activity {
                 }
 
                 // feed the frame to vencoder and muxer.
-                onGetYuvFrame(frame);
+                try {
+                    onGetYuvFrame(frame);
+                } catch (Exception e) {
+                    Log.e(TAG, String.format("consume yuv frame failed. e=%s", e.toString()));
+                    e.printStackTrace();
+                    throw e;
+                }
 
                 // to fetch next frame.
                 camera.addCallbackBuffer(vbuffer);
@@ -647,12 +651,8 @@ public class MainActivity extends Activity {
         return y_size + c_size * 2;
     }
 
-    // choose the right supported color format. @see below:
-    // https://developer.android.com/reference/android/media/MediaCodecInfo.html
-    // https://developer.android.com/reference/android/media/MediaCodecInfo.CodecCapabilities.html
-    private int chooseVideoEncoder() {
-        MediaCodecInfo ci = null;
-
+    // choose the video encoder by name.
+    private MediaCodecInfo chooseVideoEncoder(String name, MediaCodecInfo def) {
         int nbCodecs = MediaCodecList.getCodecCount();
         for (int i = 0; i < nbCodecs; i++) {
             MediaCodecInfo mci = MediaCodecList.getCodecInfoAt(i);
@@ -664,37 +664,53 @@ public class MainActivity extends Activity {
             for (int j = 0; j < types.length; j++) {
                 if (types[j].equalsIgnoreCase(VCODEC)) {
                     //Log.i(TAG, String.format("vencoder %s types: %s", mci.getName(), types[j]));
-                    if (ci == null) {
-                        ci = mci;
-                    } else if (mci.getName().contains("qcom")) {
-                        ci = mci;
+                    if (name == null) {
+                        return mci;
+                    }
+
+                    if (mci.getName().contains(name)) {
+                        return mci;
                     }
                 }
             }
         }
-        vmci = ci;
+
+        return def;
+    }
+
+    // choose the right supported color format. @see below:
+    // https://developer.android.com/reference/android/media/MediaCodecInfo.html
+    // https://developer.android.com/reference/android/media/MediaCodecInfo.CodecCapabilities.html
+    private int chooseVideoEncoder() {
+        // choose the encoder "video/avc":
+        //      1. select one when type matched.
+        //      2. perfer google avc.
+        //      3. perfer qcom avc.
+        vmci = chooseVideoEncoder(null, null);
+        //vmci = chooseVideoEncoder("google", vmci);
+        //vmci = chooseVideoEncoder("qcom", vmci);
 
         int matchedColorFormat = 0;
-        MediaCodecInfo.CodecCapabilities cc = ci.getCapabilitiesForType(VCODEC);
+        MediaCodecInfo.CodecCapabilities cc = vmci.getCapabilitiesForType(VCODEC);
         for (int i = 0; i < cc.colorFormats.length; i++) {
             int cf = cc.colorFormats[i];
-            Log.i(TAG, String.format("vencoder %s supports color fomart 0x%x(%d)", ci.getName(), cf, cf));
+            Log.i(TAG, String.format("vencoder %s supports color fomart 0x%x(%d)", vmci.getName(), cf, cf));
 
             // choose YUV for h.264, prefer the bigger one.
             if ((cf >= cc.COLOR_FormatYUV411Planar && cf <= cc.COLOR_FormatYUV422SemiPlanar)) {
                 if (cf > matchedColorFormat) {
                     matchedColorFormat = cf;
+                    break;
                 }
             }
         }
-        //matchedColorFormat = cc.colorFormats[3];
 
         for (int i = 0; i < cc.profileLevels.length; i++) {
             MediaCodecInfo.CodecProfileLevel pl = cc.profileLevels[i];
-            Log.i(TAG, String.format("vencoder %s support profile %d, level %d", ci.getName(), pl.profile, pl.level));
+            Log.i(TAG, String.format("vencoder %s support profile %d, level %d", vmci.getName(), pl.profile, pl.level));
         }
 
-        Log.i(TAG, String.format("vencoder %s choose color format 0x%x(%d)", ci.getName(), matchedColorFormat, matchedColorFormat));
+        Log.i(TAG, String.format("vencoder %s choose color format 0x%x(%d)", vmci.getName(), matchedColorFormat, matchedColorFormat));
         return matchedColorFormat;
     }
 
