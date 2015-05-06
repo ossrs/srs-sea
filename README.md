@@ -1,6 +1,10 @@
 # android-publisher
 The android live publisher to SRS over HTTP-FLV.
 
+## Download
+
+The latest dev apk http://ossrs.net//sea.latest.apk
+
 ## Features
 
 * Only java files, without any native code.
