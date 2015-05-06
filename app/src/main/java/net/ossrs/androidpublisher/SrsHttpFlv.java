@@ -56,6 +56,44 @@ public class SrsHttpFlv {
     }
 
     /**
+     * print the size of bytes in bb
+     * @param bb the bytes to print.
+     * @param size the total size of bytes to print.
+     */
+    public static void srs_print_bytes(String tag, ByteBuffer bb, int size) {
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        int bytes_in_line = 16;
+        int max = bb.remaining();
+        for (i = 0; i < size && i < max; i++) {
+            sb.append(String.format("0x%s ", Integer.toHexString(bb.get(i) & 0xFF)));
+            if (((i + 1) % bytes_in_line) == 0) {
+                Log.i(tag, String.format("%03d-%03d: %s", i / bytes_in_line * bytes_in_line, i, sb.toString()));
+                sb = new StringBuilder();
+            }
+        }
+        if (sb.length() > 0) {
+            Log.i(tag, String.format("%03d-%03d: %s", size / bytes_in_line * bytes_in_line, i - 1, sb.toString()));
+        }
+    }
+    public static void srs_print_bytes(String tag, byte[] bb, int size) {
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        int bytes_in_line = 16;
+        int max = bb.length;
+        for (i = 0; i < size && i < max; i++) {
+            sb.append(String.format("0x%s ", Integer.toHexString(bb[i] & 0xFF)));
+            if (((i + 1) % bytes_in_line) == 0) {
+                Log.i(tag, String.format("%03d-%03d: %s", i / bytes_in_line * bytes_in_line, i, sb.toString()));
+                sb = new StringBuilder();
+            }
+        }
+        if (sb.length() > 0) {
+            Log.i(tag, String.format("%03d-%03d: %s", size / bytes_in_line * bytes_in_line, i - 1, sb.toString()));
+        }
+    }
+
+    /**
      * Adds a track with the specified format.
      * @param format The media format for the track.
      * @return The track index for this newly added track.
@@ -138,8 +176,7 @@ public class SrsHttpFlv {
      */
     public void writeSampleData(int trackIndex, ByteBuffer byteBuf, MediaCodec.BufferInfo bufferInfo) throws Exception {
         //Log.i(TAG, String.format("dumps the %s stream %dB, pts=%d", (trackIndex == VIDEO_TRACK) ? "Vdieo" : "Audio", bufferInfo.size, bufferInfo.presentationTimeUs / 1000));
-        //SrsHttpFlv.SrsUtils utils = new SrsHttpFlv.SrsUtils();
-        //utils.srs_print_bytes(byteBuf, bufferInfo.size);
+        //SrsHttpFlv.srs_print_bytes(TAG, byteBuf, bufferInfo.size);
 
         if (bufferInfo.offset > 0) {
             Log.w(TAG, String.format("encoded frame %dB, offset=%d pts=%dms",
@@ -610,28 +647,6 @@ public class SrsHttpFlv {
                 default: return SrsAacProfile.Reserved;
             }
         }
-
-        /**
-         * print the size of bytes in bb
-         * @param bb the bytes to print.
-         * @param size the total size of bytes to print.
-         */
-        public void srs_print_bytes(ByteBuffer bb, int size) {
-            StringBuilder sb = new StringBuilder();
-            int i = 0;
-            int bytes_in_line = 16;
-            int max = bb.remaining();
-            for (i = 0; i < size && i < max; i++) {
-                sb.append(String.format("0x%s ", Integer.toHexString(bb.get(i) & 0xFF)));
-                if (((i + 1) % bytes_in_line) == 0) {
-                    Log.i(TAG, String.format("%03d-%03d: %s", i / bytes_in_line * bytes_in_line, i, sb.toString()));
-                    sb = new StringBuilder();
-                }
-            }
-            if (sb.length() > 0) {
-                Log.i(TAG, String.format("%03d-%03d: %s", size / bytes_in_line * bytes_in_line, i - 1, sb.toString()));
-            }
-        }
     }
 
     /**
@@ -729,7 +744,7 @@ public class SrsHttpFlv {
             nalu_header.frame.rewind();
 
             //Log.i(TAG, String.format("mux ibp frame %dB", frame.size));
-            //utils.srs_print_bytes(nalu_header.frame, 16);
+            //SrsHttpFlv.srs_print_bytes(TAG, nalu_header.frame, 16);
 
             return nalu_header;
         }
@@ -872,7 +887,7 @@ public class SrsHttpFlv {
             flv_tag.frame.rewind();
 
             //Log.i(TAG, String.format("flv tag muxed, %dB", flv_tag.size));
-            //utils.srs_print_bytes(flv_tag.frame, 128);
+            //SrsHttpFlv.srs_print_bytes(TAG, flv_tag.frame, 128);
 
             return flv_tag;
         }
@@ -885,6 +900,8 @@ public class SrsHttpFlv {
                 // about annexb, @see H.264-AVC-ISO_IEC_14496-10.pdf, page 211.
                 SrsAnnexbSearch tbbsc = utils.srs_avc_startswith_annexb(bb, bi);
                 if (!tbbsc.match || tbbsc.nb_start_code < 3) {
+                    Log.e(TAG, "annexb not match.");
+                    SrsHttpFlv.srs_print_bytes(TAG, bb, 16);
                     throw new Exception(String.format("annexb not match for %dB, pos=%d", bi.size, bb.position()));
                 }
 
@@ -908,8 +925,8 @@ public class SrsHttpFlv {
                 tbb.size = bb.position() - pos;
                 if (bb.position() < bi.size) {
                     Log.i(TAG, String.format("annexb multiple match ok, pts=%d", bi.presentationTimeUs / 1000));
-                    utils.srs_print_bytes(tbbs, 16);
-                    utils.srs_print_bytes(bb.slice(), 16);
+                    SrsHttpFlv.srs_print_bytes(TAG, tbbs, 16);
+                    SrsHttpFlv.srs_print_bytes(TAG, bb.slice(), 16);
                 }
                 //Log.i(TAG, String.format("annexb match %d bytes", tbb.size));
                 break;

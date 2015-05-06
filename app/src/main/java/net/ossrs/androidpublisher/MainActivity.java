@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
     // video device.
     private Camera camera;
     private MediaCodec vencoder;
+    private MediaCodecInfo vmci;
     private MediaCodec.BufferInfo vebi;
     private byte[] vbuffer;
 
@@ -67,9 +68,11 @@ public class MainActivity extends Activity {
     //private String flv_url = "http://192.168.2.111:8936/live/livestream.flv";
     private String flv_url = "http://192.168.1.144:8936/live/livestream.flv";
     // the bitrate in kbps.
-    private int vbitrate_kbps = 125;
-    private final static int VFPS = 20;
+    private int vbitrate_kbps = 500;
+    private final static int VFPS = 25;
     private final static int VGOP = 5;
+    private final static int VWIDTH = 1280;
+    private final static int VHEIGHT = 720;
 
     // encoding params.
     private long presentationTimeUs;
@@ -158,31 +161,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        // when got YUV frame from camera.
-        // @see https://developer.android.com/reference/android/media/MediaCodec.html
-        final Object onYuvFrame = new Camera.PreviewCallback() {
-            @Override
-            public void onPreviewFrame(byte[] data, Camera camera) {
-                // color space transform.
-                byte[] frame = new byte[data.length];
-                if (vcolor == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar) {
-                    YV12toYUV420Planar(data, frame, vsize.width, vsize.height);
-                } else if (vcolor == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar) {
-                    YV12toYUV420PackedSemiPlanar(data, frame, vsize.width, vsize.height);
-                } else if (vcolor == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) {
-                    YV12toYUV420PackedSemiPlanar(data, frame, vsize.width, vsize.height);
-                } else {
-                    System.arraycopy(data, 0, frame, 0, data.length);
-                }
-
-                // feed the frame to vencoder and muxer.
-                onGetYuvFrame(frame);
-
-                // to fetch next frame.
-                camera.addCallbackBuffer(vbuffer);
-            }
-        };
-
         // for camera, @see https://developer.android.com/reference/android/hardware/Camera.html
         final Button btnPublish = (Button) findViewById(R.id.capture);
         final Button btnStop = (Button) findViewById(R.id.stop);
@@ -204,7 +182,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 dispose();
-                publish(onYuvFrame, preview.getHolder());
+                publish(fetchVideoFromDevice(), preview.getHolder());
                 btnPublish.setEnabled(false);
                 btnStop.setEnabled(true);
             }
@@ -240,7 +218,7 @@ public class MainActivity extends Activity {
         presentationTimeUs = new Date().getTime() * 1000;
 
         // open mic, to find the work one.
-        if ((mic = findAudioRecord()) == null) {
+        if ((mic = chooseAudioDevice()) == null) {
             Log.e(TAG, String.format("mic find device mode failed."));
             return;
         }
@@ -285,31 +263,49 @@ public class MainActivity extends Activity {
         Camera.Size size = null;
         List<Camera.Size> sizes = parameters.getSupportedPictureSizes();
         for (int i = 0; i < sizes.size(); i++) {
-            //Log.i(TAG, String.format("camera supported picture size %dx%d", sizes.get(i).width, sizes.get(i).height));
-            if (sizes.get(i).width == 640) {
-                size = sizes.get(i);
+            Camera.Size s = sizes.get(i);
+            Log.i(TAG, String.format("camera supported picture size %dx%d", s.width, s.height));
+            if (size == null) {
+                if (s.height == VHEIGHT) {
+                    size = s;
+                }
+            } else {
+                if (s.width == VWIDTH) {
+                    size = s;
+                }
             }
         }
         parameters.setPictureSize(size.width, size.height);
         Log.i(TAG, String.format("set the picture size in %dx%d", size.width, size.height));
 
+        size = null;
         sizes = parameters.getSupportedPreviewSizes();
         for (int i = 0; i < sizes.size(); i++) {
-            //Log.i(TAG, String.format("camera supported preview size %dx%d", sizes.get(i).width, sizes.get(i).height));
-            if (sizes.get(i).width == 640) {
-                vsize = size = sizes.get(i);
+            Camera.Size s = sizes.get(i);
+            Log.i(TAG, String.format("camera supported preview size %dx%d", s.width, s.height));
+            if (size == null) {
+                if (s.height == VHEIGHT) {
+                    size = s;
+                }
+            } else {
+                if (s.width == VWIDTH) {
+                    size = s;
+                }
             }
         }
+        vsize = size;
         parameters.setPreviewSize(size.width, size.height);
         Log.i(TAG, String.format("set the preview size in %dx%d", size.width, size.height));
 
         camera.setDisplayOrientation(90);
         camera.setParameters(parameters);
 
+        // choose the right vencoder, perfer qcom then google.
+        vcolor = chooseVideoEncoder();
         // vencoder yuv to 264 es stream.
         // requires sdk level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
         try {
-            vencoder = MediaCodec.createEncoderByType(VCODEC);
+            vencoder = MediaCodec.createByCodecName(vmci.getName());
         } catch (IOException e) {
             Log.e(TAG, "create vencoder failed.");
             e.printStackTrace();
@@ -318,14 +314,21 @@ public class MainActivity extends Activity {
         vebi = new MediaCodec.BufferInfo();
 
         // setup the vencoder.
-        vcolor = chooseColorFormat();
         // @see https://developer.android.com/reference/android/media/MediaCodec.html
         MediaFormat vformat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
+        //MediaFormat vformat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, 1280, 720);
+        //vformat.setInteger(MediaFormat.KEY_PROFILE, VPROFILE);
         vformat.setInteger(MediaFormat.KEY_COLOR_FORMAT, vcolor);
-        vformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+        //vformat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
         vformat.setInteger(MediaFormat.KEY_BIT_RATE, 1000 * vbitrate_kbps);
         vformat.setInteger(MediaFormat.KEY_FRAME_RATE, VFPS);
         vformat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, VGOP);
+        Log.i(TAG, String.format("vencoder %s, color=%d, bitrate=%d, fps=%d, gop=%d, size=%dx%d",
+            vmci.getName(), vcolor, vbitrate_kbps, VFPS, VGOP, vsize.width, vsize.height));
+        // the following error can be ignored:
+        // 1. the storeMetaDataInBuffers error:
+        //      [OMX.qcom.video.encoder.avc] storeMetaDataInBuffers (output) failed w/ err -2147483648
+        //      @see http://bigflake.com/mediacodec/#q12
         vencoder.configure(vformat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
         // add the video tracker to muxer.
@@ -358,23 +361,54 @@ public class MainActivity extends Activity {
         aworker = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (aloop && mic != null && !Thread.interrupted()) {
-                    int size = mic.read(abuffer, 0, abuffer.length);
-                    if (size <= 0) {
-                        Log.i(TAG, "audio ignore, no data to read.");
-                        break;
-                    }
-
-                    byte[] audio = new byte[size];
-                    System.arraycopy(abuffer, 0, audio, 0, size);
-
-                    onGetPcmFrame(audio);
-                }
+                fetchAudioFromDevice();
             }
         });
         Log.i(TAG, "start audio worker thread.");
         aloop = true;
         aworker.start();
+    }
+
+    // when got YUV frame from camera.
+    // @see https://developer.android.com/reference/android/media/MediaCodec.html
+    private Object fetchVideoFromDevice() {
+        return new Camera.PreviewCallback() {
+            @Override
+            public void onPreviewFrame(byte[] data, Camera camera) {
+                // color space transform.
+                byte[] frame = new byte[data.length];
+                if (vcolor == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar) {
+                    YV12toYUV420Planar(data, frame, vsize.width, vsize.height);
+                } else if (vcolor == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar) {
+                    YV12toYUV420PackedSemiPlanar(data, frame, vsize.width, vsize.height);
+                } else if (vcolor == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) {
+                    YV12toYUV420PackedSemiPlanar(data, frame, vsize.width, vsize.height);
+                } else {
+                    System.arraycopy(data, 0, frame, 0, data.length);
+                }
+
+                // feed the frame to vencoder and muxer.
+                onGetYuvFrame(frame);
+
+                // to fetch next frame.
+                camera.addCallbackBuffer(vbuffer);
+            }
+        };
+    }
+
+    private void fetchAudioFromDevice() {
+        while (aloop && mic != null && !Thread.interrupted()) {
+            int size = mic.read(abuffer, 0, abuffer.length);
+            if (size <= 0) {
+                Log.i(TAG, "audio ignore, no data to read.");
+                break;
+            }
+
+            byte[] audio = new byte[size];
+            System.arraycopy(abuffer, 0, audio, 0, size);
+
+            onGetPcmFrame(audio);
+        }
     }
 
     private void dispose() {
@@ -535,6 +569,7 @@ public class MainActivity extends Activity {
                 bb.put(data, 0, data.length);
                 long pts = new Date().getTime() * 1000 - presentationTimeUs;
                 //Log.i(TAG, String.format("feed PCM to encode %dB, pts=%d", data.length, pts / 1000));
+                //SrsHttpFlv.srs_print_bytes(TAG, data, data.length);
                 aencoder.queueInputBuffer(inBufferIndex, 0, data.length, pts, 0);
             }
         }
@@ -544,6 +579,8 @@ public class MainActivity extends Activity {
             //Log.i(TAG, String.format("try to dequeue output vbuffer, ii=%d, oi=%d", inBufferIndex, outBufferIndex));
             if (outBufferIndex >= 0) {
                 ByteBuffer bb = outBuffers[outBufferIndex];
+                //Log.i(TAG, String.format("encoded aac %dB, pts=%d", aebi.size, aebi.presentationTimeUs / 1000));
+                //SrsHttpFlv.srs_print_bytes(TAG, bb, aebi.size);
                 onEncodedAacFrame(bb, aebi);
                 aencoder.releaseOutputBuffer(outBufferIndex, false);
             } else {
@@ -553,11 +590,11 @@ public class MainActivity extends Activity {
     }
 
     // @remark thanks for baozi.
-    public AudioRecord findAudioRecord() {
+    public AudioRecord chooseAudioDevice() {
         int[] sampleRates = {44100, 22050, 11025};
         for (int sampleRate : sampleRates) {
             int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-            int channelConfig = AudioFormat.CHANNEL_CONFIGURATION_MONO;
+            int channelConfig = AudioFormat.CHANNEL_CONFIGURATION_STEREO;
 
             int bSamples = 8;
             if (audioFormat == AudioFormat.ENCODING_PCM_16BIT) {
@@ -570,7 +607,7 @@ public class MainActivity extends Activity {
             }
 
             //int bufferSize = 2 * bSamples * nChannels / 8;
-            int bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+            int bufferSize = 2 * AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
             AudioRecord audioRecorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, bufferSize);
 
             if (audioRecorder.getState() != AudioRecord.STATE_INITIALIZED) {
@@ -580,11 +617,12 @@ public class MainActivity extends Activity {
 
             asample_rate = sampleRate;
             abits = audioFormat;
-            achannel = channelConfig;
+            achannel = nChannels;
             mic = audioRecorder;
-            abuffer = new byte[AudioRecord.getMinBufferSize(asample_rate, achannel, abits)];
-            Log.i(TAG, String.format("mic open rate=%dHZ, channels=%d, format=%d, buffer=%d/%d, state=%d",
-                    sampleRate, nChannels, audioFormat, bufferSize, abuffer.length, audioRecorder.getState()));
+            abuffer = new byte[Math.min(4096, bufferSize)];
+            //abuffer = new byte[bufferSize];
+            Log.i(TAG, String.format("mic open rate=%dHZ, channels=%d, bits=%d, buffer=%d/%d, state=%d",
+                    sampleRate, nChannels, bSamples, bufferSize, abuffer.length, audioRecorder.getState()));
             break;
         }
 
@@ -610,7 +648,7 @@ public class MainActivity extends Activity {
     // choose the right supported color format. @see below:
     // https://developer.android.com/reference/android/media/MediaCodecInfo.html
     // https://developer.android.com/reference/android/media/MediaCodecInfo.CodecCapabilities.html
-    private int chooseColorFormat() {
+    private int chooseVideoEncoder() {
         MediaCodecInfo ci = null;
 
         int nbCodecs = MediaCodecList.getCodecCount();
@@ -624,27 +662,37 @@ public class MainActivity extends Activity {
             for (int j = 0; j < types.length; j++) {
                 if (types[j].equalsIgnoreCase(VCODEC)) {
                     //Log.i(TAG, String.format("vencoder %s types: %s", mci.getName(), types[j]));
-                    ci = mci;
-                    break;
+                    if (ci == null) {
+                        ci = mci;
+                    } else if (mci.getName().contains("qcom")) {
+                        ci = mci;
+                    }
                 }
             }
         }
+        vmci = ci;
 
         int matchedColorFormat = 0;
         MediaCodecInfo.CodecCapabilities cc = ci.getCapabilitiesForType(VCODEC);
         for (int i = 0; i < cc.colorFormats.length; i++) {
             int cf = cc.colorFormats[i];
-            Log.i(TAG, String.format("vencoder %s supports color fomart %d", ci.getName(), cf));
+            Log.i(TAG, String.format("vencoder %s supports color fomart 0x%x(%d)", ci.getName(), cf, cf));
 
             // choose YUV for h.264, prefer the bigger one.
-            if (cf >= cc.COLOR_FormatYUV411Planar && cf <= cc.COLOR_FormatYUV422SemiPlanar) {
+            if ((cf >= cc.COLOR_FormatYUV411Planar && cf <= cc.COLOR_FormatYUV422SemiPlanar)) {
                 if (cf > matchedColorFormat) {
                     matchedColorFormat = cf;
                 }
             }
         }
+        //matchedColorFormat = cc.colorFormats[3];
 
-        Log.i(TAG, String.format("vencoder %s choose color format %d", ci.getName(), matchedColorFormat));
+        for (int i = 0; i < cc.profileLevels.length; i++) {
+            MediaCodecInfo.CodecProfileLevel pl = cc.profileLevels[i];
+            Log.i(TAG, String.format("vencoder %s support profile %d, level %d", ci.getName(), pl.profile, pl.level));
+        }
+
+        Log.i(TAG, String.format("vencoder %s choose color format 0x%x(%d)", ci.getName(), matchedColorFormat, matchedColorFormat));
         return matchedColorFormat;
     }
 
