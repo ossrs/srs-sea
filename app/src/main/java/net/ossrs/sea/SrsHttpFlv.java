@@ -1,6 +1,5 @@
 package net.ossrs.sea;
 
-import android.media.AudioFormat;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.os.Handler;
@@ -33,7 +32,7 @@ public class SrsHttpFlv {
     private Handler handler;
 
     private SrsFlv flv;
-    private boolean sendSequenceHeader;
+    private boolean sequenceHeaderOk;
     private SrsFlvFrame videoSequenceHeader;
     private SrsFlvFrame audioSequenceHeader;
 
@@ -54,7 +53,7 @@ public class SrsHttpFlv {
     public SrsHttpFlv(String path, int format) {
         nb_videos = 0;
         nb_audios = 0;
-        sendSequenceHeader = false;
+        sequenceHeaderOk = false;
 
         url = path;
         flv = new SrsFlv();
@@ -145,9 +144,7 @@ public class SrsHttpFlv {
      * stop the muxer, disconnect HTTP connection from SRS.
      */
     public void stop() {
-        nb_videos = 0;
-        nb_audios = 0;
-        cache.clear();
+        clearCache();
 
         if (worker == null && conn == null) {
             return;
@@ -199,6 +196,8 @@ public class SrsHttpFlv {
     }
 
     private void disconnect() {
+        clearCache();
+
         if (bos == null && conn == null) {
             return;
         }
@@ -216,6 +215,13 @@ public class SrsHttpFlv {
             conn = null;
         }
         Log.i(TAG, "worker: disconnect SRS ok.");
+    }
+
+    private void clearCache() {
+        nb_videos = 0;
+        nb_audios = 0;
+        cache.clear();
+        sequenceHeaderOk = false;
     }
 
     private void reconnect() throws Exception {
@@ -249,7 +255,7 @@ public class SrsHttpFlv {
         bos.flush();
         Log.i(TAG, String.format("worker: flv header ok."));
 
-        sendSequenceHeader = true;
+        clearCache();
     }
 
     private void cycle() throws Exception {
@@ -277,22 +283,30 @@ public class SrsHttpFlv {
                 try {
                     // when sequence header required,
                     // adjust the dts by the current frame and sent it.
-                    if (sendSequenceHeader) {
+                    if (!sequenceHeaderOk && bos != null) {
                         if (videoSequenceHeader != null) {
                             videoSequenceHeader.dts = frame.dts;
                         }
-
                         if (audioSequenceHeader != null) {
                             audioSequenceHeader.dts = frame.dts;
                         }
 
                         sendFlvTag(bos, audioSequenceHeader);
                         sendFlvTag(bos, videoSequenceHeader);
-                        sendSequenceHeader = false;
+                        sequenceHeaderOk = true;
                     }
 
                     // try to send, igore when not connected.
-                    sendFlvTag(bos, frame);
+                    if (sequenceHeaderOk && bos != null) {
+                        sendFlvTag(bos, frame);
+                    }
+
+                    // cache the sequence header.
+                    if (frame.type == SrsCodecFlvTag.Video && frame.avc_aac_type == SrsCodecVideoAVCType.SequenceHeader) {
+                        videoSequenceHeader = frame;
+                    } else if (frame.type == SrsCodecFlvTag.Audio && frame.avc_aac_type == 0) {
+                        audioSequenceHeader = frame;
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                     Log.e(TAG, String.format("worker: send flv tag failed, e=%s", e.getMessage()));
@@ -310,14 +324,7 @@ public class SrsHttpFlv {
             return;
         }
 
-        // cache the sequence header.
-        if (frame.type == SrsCodecFlvTag.Video && frame.avc_aac_type == SrsCodecVideoAVCType.SequenceHeader) {
-            videoSequenceHeader = frame;
-        } else if (frame.type == SrsCodecFlvTag.Audio && frame.avc_aac_type == 0) {
-            audioSequenceHeader = frame;
-        }
-
-        if (bos == null || frame.tag.size <= 0) {
+        if (frame.tag.size <= 0) {
             return;
         }
 
