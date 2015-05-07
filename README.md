@@ -15,7 +15,7 @@ The step to use the SEA:
 1. [Optional] Setup the SRS server refer to [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs), or use ossrs.net server, for instance, push `http://ossrs.net:8936/live/sea.flv`
 1. Play the [RTMP stream](http://www.ossrs.net/players/srs_player.html?vhost=hls&port=19351&stream=sea&server=ossrs.net&autostart=true)
 1. Play the [HLS stream](http://ossrs.net:8081/live/sea.html), or scan the below code:
-![SEA HLS stream](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.jpg?0)
+![SEA HLS stream](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.jpg?v=0)
 
 ## Features
 
