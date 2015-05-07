@@ -9,6 +9,8 @@ The latest dev apk http://ossrs.net/apks/sea.latest.apk
 
 The step to use the SEA:
 
+1. Make sure your android is 4.1+, see [Requirements](https://github.com/simple-rtmp-server/srs-sea#requirements)
+
 1. Download the apk from [SEA](http://ossrs.net/apks/sea.latest.apk)
 
 1. Setup the SRS server refer to [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs), or use ossrs.net server, for instance, push http://ossrs.net:8936/live/sea.flv
@@ -28,7 +30,7 @@ The step to use the SEA:
 
 ## Requirements
 
-Android SDK level 16+, Android 4.1, 4.1.1, the JELLY_BEAN
+Android SDK level 16+, Android 4.1, the JELLY_BEAN
 
 To show your android [media codec info](http://ossrs.net/apks/MediaCodecInfo.apk), read [more](https://coderoid.wordpress.com/2014/08/01/obtaining-android-media-codec-information/).
 
