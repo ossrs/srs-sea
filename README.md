@@ -18,6 +18,15 @@ The step to use the SEA:
 1. <b>[Required]</b> Play the [HLS stream](http://ossrs.net:8081/live/sea.html), or scan the below code:<br/>
 ![SEA HLS stream](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.jpg?v=0)
 
+<b>Remark: Change the url if not use the srs public server, for example</b>
+```
+Publish: http://ossrs.net:8936/live/sea.flv
+RTMP URL: rtmp://ossrs.net:19351/live?vhost=hls/sea
+HLS URL: http://ossrs.net:8081/live/sea.m3u8
+```
+
+Because the SRS in ossrs.net is config to use the vhost, so you must change according your config, read [more](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs).
+
 ## Features
 
 * Only java files, without any native code.
