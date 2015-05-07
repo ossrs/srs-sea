@@ -11,7 +11,7 @@ The step to use the SEA:
 
 1. Download the apk from [SEA](http://ossrs.net/apks/sea.latest.apk)
 
-1. Setup the SRS server refer to [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs), or push to ossrs.net server, for instance, push to http://ossrs.net:8936/live/sea.flv
+1. Setup the SRS server refer to [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs), or use ossrs.net server, for instance, push http://ossrs.net:8936/live/sea.flv
 
 1. Play the [RTMP stream](http://www.ossrs.net/players/srs_player.html?vhost=hls&port=19351&stream=sea&server=ossrs.net&autostart=true)
 
