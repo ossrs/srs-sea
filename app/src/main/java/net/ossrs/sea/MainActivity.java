@@ -47,10 +47,6 @@ public class MainActivity extends Activity {
     private int achannel;
     private int abits;
     private int atrack;
-
-    // The interval in which the recorded samples are output to the file
-    // Used only in uncompressed mode
-    private static final int ATIMER_INTERVAL = 23;
     private static final int ABITRATE_KBPS = 24;
 
     // video device.
@@ -72,7 +68,7 @@ public class MainActivity extends Activity {
     //private String flv_url = "http://192.168.1.144:8936/live/livestream.flv";
     // the bitrate in kbps.
     private int vbitrate_kbps = 300;
-    private final static int VFPS = 25;
+    private final static int VFPS = 20;
     private final static int VGOP = 5;
     private final static int VWIDTH = 640;
     private final static int VHEIGHT = 480;

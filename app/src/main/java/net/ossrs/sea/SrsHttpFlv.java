@@ -954,166 +954,6 @@ public class SrsHttpFlv {
         public byte[] frame;
     }
 
-    class SrsRawAacStream {
-        private SrsUtils utils;
-        private final static String TAG = "SrsMuxer";
-
-        public SrsRawAacStream() {
-            utils = new SrsUtils();
-        }
-
-        public SrsRawAacStreamCodec adts_demux(ByteBuffer bb, MediaCodec.BufferInfo bi)
-        {
-            while (bb.position() < bi.size) {
-                int adts_header_start = bb.position();
-
-                // decode the ADTS.
-                // @see aac-iso-13818-7.pdf, page 26
-                //      6.2 Audio Data Transport Stream, ADTS
-                // @see https://github.com/simple-rtmp-server/srs/issues/212#issuecomment-64145885
-                // byte_alignment()
-
-                // adts_fixed_header:
-                //      12bits syncword,
-                //      16bits left.
-                // adts_variable_header:
-                //      28bits
-                //      12+16+28=56bits
-                // adts_error_check:
-                //      16bits if protection_absent
-                //      56+16=72bits
-                // if protection_absent:
-                //      require(7bytes)=56bits
-                // else
-                //      require(9bytes)=72bits
-                if (bi.size - bb.position() < 7) {
-                    return null;
-                }
-
-                // for aac, the frame must be ADTS format.
-                if (!utils.srs_aac_startswith_adts(bb, bi)) {
-                    return null;
-                }
-
-                // syncword 12 bslbf
-                bb.get();
-                // 4bits left.
-                // adts_fixed_header(), 1.A.2.2.1 Fixed Header of ADTS
-                // ID 1 bslbf
-                // layer 2 uimsbf
-                // protection_absent 1 bslbf
-                byte pav = (byte)(bb.get() & 0x0f);
-                byte id = (byte)((pav >> 3) & 0x01);
-                /*int8_t layer = (pav >> 1) & 0x03;*/
-                byte protection_absent = (byte)(pav & 0x01);
-
-                /**
-                 * ID: MPEG identifier, set to ‘1’ if the audio data in the ADTS stream are MPEG-2 AAC (See ISO/IEC 13818-7)
-                 * and set to ‘0’ if the audio data are MPEG-4. See also ISO/IEC 11172-3, subclause 2.4.2.3.
-                 */
-                if (id != 0x01) {
-                    Log.w(TAG, String.format("adts: id must be 1(aac), actual 0(mp4a)."));
-
-                    // well, some system always use 0, but actually is aac format.
-                    // for example, houjian vod ts always set the aac id to 0, actually 1.
-                    // we just ignore it, and alwyas use 1(aac) to demux.
-                    id = 0x01;
-                }
-
-                short sfiv = bb.getShort();
-                // profile 2 uimsbf
-                // sampling_frequency_index 4 uimsbf
-                // private_bit 1 bslbf
-                // channel_configuration 3 uimsbf
-                // original/copy 1 bslbf
-                // home 1 bslbf
-                byte profile = (byte)((sfiv >> 14) & 0x03);
-                byte sampling_frequency_index = (byte)((sfiv >> 10) & 0x0f);
-                /*int8_t private_bit = (sfiv >> 9) & 0x01;*/
-                byte channel_configuration = (byte)((sfiv >> 6) & 0x07);
-                /*int8_t original = (sfiv >> 5) & 0x01;*/
-                /*int8_t home = (sfiv >> 4) & 0x01;*/
-                //int8_t Emphasis; @remark, Emphasis is removed, @see https://github.com/simple-rtmp-server/srs/issues/212#issuecomment-64154736
-                // 4bits left.
-                // adts_variable_header(), 1.A.2.2.2 Variable Header of ADTS
-                // copyright_identification_bit 1 bslbf
-                // copyright_identification_start 1 bslbf
-                /*int8_t fh_copyright_identification_bit = (fh1 >> 3) & 0x01;*/
-                /*int8_t fh_copyright_identification_start = (fh1 >> 2) & 0x01;*/
-                // frame_length 13 bslbf: Length of the frame including headers and error_check in bytes.
-                // use the left 2bits as the 13 and 12 bit,
-                // the frame_length is 13bits, so we move 13-2=11.
-                short frame_length = (short)((sfiv << 11) & 0x1800);
-
-                // 3bytes.
-                short abfv = bb.getShort();
-                bb.get();
-                // frame_length 13 bslbf: consume the first 13-2=11bits
-                // the fh2 is 24bits, so we move right 16-11=5.
-                frame_length |= (short)((abfv >> 5) & 0x07ff);
-                // adts_buffer_fullness 11 bslbf
-                /*int16_t fh_adts_buffer_fullness = (abfv >> 2) & 0x7ff;*/
-                // number_of_raw_data_blocks_in_frame 2 uimsbf
-                /*int16_t number_of_raw_data_blocks_in_frame = abfv & 0x03;*/
-                // adts_error_check(), 1.A.2.2.3 Error detection
-                if (protection_absent == 0) {
-                    if (bi.size - bb.position() < 2) {
-                        return null;
-                    }
-                    // crc_check 16 Rpchof
-                    /*int16_t crc_check = */bb.getShort();
-                }
-
-                // TODO: check the sampling_frequency_index
-                // TODO: check the channel_configuration
-
-                // raw_data_blocks
-                int adts_header_size = bb.position() - adts_header_start;
-                int raw_data_size = frame_length - adts_header_size;
-                if (bi.size - bb.position() < raw_data_size) {
-                    return null;
-                }
-
-                // the codec info.
-                SrsRawAacStreamCodec codec = new SrsRawAacStreamCodec();
-                codec.protection_absent = protection_absent;
-                codec.aac_object = utils.srs_codec_aac_ts2rtmp(profile);
-                codec.sampling_frequency_index = sampling_frequency_index;
-                codec.channel_configuration = channel_configuration;
-                codec.frame_length = frame_length;
-
-                // @see srs_audio_write_raw_frame().
-                // TODO: FIXME: maybe need to resample audio.
-                codec.sound_format = 10; // AAC
-                if (sampling_frequency_index <= 0x0c && sampling_frequency_index > 0x0a) {
-                    codec.sound_rate = SrsCodecAudioSampleRate.R5512;
-                } else if (sampling_frequency_index <= 0x0a && sampling_frequency_index > 0x07) {
-                    codec.sound_rate = SrsCodecAudioSampleRate.R11025;
-                } else if (sampling_frequency_index <= 0x07 && sampling_frequency_index > 0x04) {
-                    codec.sound_rate = SrsCodecAudioSampleRate.R22050;
-                } else if (sampling_frequency_index <= 0x04) {
-                    codec.sound_rate = SrsCodecAudioSampleRate.R44100;
-                } else {
-                    codec.sound_rate = SrsCodecAudioSampleRate.R44100;
-                    Log.w(TAG, String.format("adts invalid sample rate for flv, rate=%#x", sampling_frequency_index));
-                }
-                codec.sound_type = (byte)Math.max(0, Math.min(1, channel_configuration - 1));
-                // TODO: FIXME: finger it out the sound size by adts.
-                codec.sound_size = 1; // 0(8bits) or 1(16bits).
-
-                // frame data.
-                if (raw_data_size > 0) {
-                    codec.frame = new byte[raw_data_size];
-                    bb.get(codec.frame);
-                }
-
-                return codec;
-            }
-
-            return null;
-        }
-    }
-
     /**
      * remux the annexb to flv tags.
      */
@@ -1133,7 +973,6 @@ public class SrsHttpFlv {
         private boolean h264_pps_changed;
         private boolean h264_sps_pps_sent;
 
-        private SrsRawAacStream aac;
         private byte[] aac_specific_config;
 
         public SrsFlv() {
@@ -1146,7 +985,6 @@ public class SrsHttpFlv {
             h264_pps_changed = false;
             h264_sps_pps_sent = false;
 
-            aac = new SrsRawAacStream();
             aac_specific_config = null;
         }
 
@@ -1199,7 +1037,7 @@ public class SrsHttpFlv {
 
                 // channelConfiguration; 4 bslbf
                 byte channelConfiguration = 1;
-                if (achannel == AudioFormat.CHANNEL_IN_STEREO) {
+                if (achannel == 2) {
                     channelConfiguration = 2;
                 }
                 ch |= (channelConfiguration << 3) & 0x78;
@@ -1220,7 +1058,7 @@ public class SrsHttpFlv {
 
             byte sound_format = 10; // AAC
             byte sound_type = 0; // 0 = Mono sound
-            if (achannel == AudioFormat.CHANNEL_IN_STEREO) {
+            if (achannel == 2) {
                 sound_type = 1; // 1 = Stereo sound
             }
             byte sound_size = 1; // 1 = 16-bit samples
