@@ -39,6 +39,7 @@ public class SrsHttpFlv {
     // use cache queue to ensure audio and video monotonically increase.
     private ArrayList<SrsFlvFrame> cache;
     private int nb_videos;
+    private int nb_audios;
 
     private static final int VIDEO_TRACK = 100;
     private static final int AUDIO_TRACK = 101;
@@ -50,6 +51,9 @@ public class SrsHttpFlv {
      * @param format the mux format, @see SrsHttpFlv.OutputFormat
      */
     public SrsHttpFlv(String path, int format) {
+        nb_videos = 0;
+        nb_audios = 0;
+
         url = path;
         flv = new SrsFlv();
         cache = new ArrayList<SrsFlvFrame>();
@@ -140,6 +144,7 @@ public class SrsHttpFlv {
      */
     public void stop() {
         nb_videos = 0;
+        nb_audios = 0;
         cache.clear();
 
         if (worker == null && conn == null) {
@@ -301,11 +306,13 @@ public class SrsHttpFlv {
 
         if (frame.is_video()) {
             nb_videos++;
+        } else if (frame.is_audio()) {
+            nb_audios++;
         }
         cache.add(frame);
 
-        // always keep 2+ videos in cache.
-        if (nb_videos > 2) {
+        // always keep one audio and one videos in cache.
+        if (nb_videos > 1 && nb_audios > 1) {
             sendCachedFrames();
         }
     }
@@ -318,17 +325,21 @@ public class SrsHttpFlv {
             }
         });
 
-        while (nb_videos > 2) {
+        while (nb_videos > 1 && nb_audios > 1) {
             SrsFlvFrame frame = cache.remove(0);
 
             if (frame.is_video()) {
                 nb_videos--;
+            } else if (frame.is_audio()) {
+                nb_audios--;
             }
 
             if (frame.is_keyframe()) {
-                Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+                Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB, videos=%d, audios=%d",
+                    frame.type, frame.dts, frame.tag.size, nb_videos, nb_audios));
             } else {
-                //Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB", frame.type, frame.dts, frame.tag.size));
+                //Log.i(TAG, String.format("worker: got frame type=%d, dts=%d, size=%dB, videos=%d, audios=%d",
+                 //   frame.type, frame.dts, frame.tag.size, nb_videos, nb_audios));
             }
 
             // write the 11B flv tag header
@@ -686,6 +697,10 @@ public class SrsHttpFlv {
 
         public boolean is_video() {
             return type == SrsCodecFlvTag.Video;
+        }
+
+        public boolean is_audio() {
+            return type == SrsCodecFlvTag.Audio;
         }
     }
 

@@ -7,6 +7,7 @@
   </component>
   <component name="AndroidLogFilters">
     <option name="TOOL_WINDOW_CUSTOM_FILTER" value="/Srs" />
+    <option name="TOOL_WINDOW_CONFIGURED_FILTER" value="Show only selected application" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0cc9a3e3-479f-4d5c-9240-20646068b55a" name="Default" comment="" />
@@ -39,11 +40,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="MainActivity.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="MainActivity.java" pinned="false" current-in-tab="false">
         <entry file="file://$USER_HOME$/Desktop/git/srs-sea/app/src/main/java/net/ossrs/sea/MainActivity.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.2034632">
-              <caret line="596" column="44" selection-start-line="596" selection-start-column="44" selection-end-line="596" selection-end-column="44" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="600" column="29" selection-start-line="600" selection-start-column="29" selection-end-line="600" selection-end-column="29" />
               <folding>
                 <element signature="imports" expanded="false" />
               </folding>
@@ -51,14 +52,22 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="SrsHttpFlv.java" pinned="false" current-in-tab="false">
+      <file leaf-file-name="SrsHttpFlv.java" pinned="false" current-in-tab="true">
         <entry file="file://$USER_HOME$/Desktop/git/srs-sea/app/src/main/java/net/ossrs/sea/SrsHttpFlv.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="1039" column="33" selection-start-line="1039" selection-start-column="33" selection-end-line="1039" selection-end-column="33" />
+            <state vertical-scroll-proportion="0.4743083">
+              <caret line="336" column="32" selection-start-line="336" selection-start-column="32" selection-end-line="336" selection-end-column="32" />
               <folding>
-                <element signature="e#38653#38671#0" expanded="true" />
-                <element signature="e#41669#41687#0" expanded="true" />
+                <element signature="e#4532#4533#0" expanded="true" />
+                <element signature="e#4554#4555#0" expanded="true" />
+                <element signature="e#23766#23767#0" expanded="true" />
+                <element signature="e#23825#23826#0" expanded="true" />
+                <element signature="e#23862#23863#0" expanded="true" />
+                <element signature="e#23921#23922#0" expanded="true" />
+                <element signature="e#35343#35344#0" expanded="true" />
+                <element signature="e#35386#35387#0" expanded="true" />
+                <element signature="e#39161#39179#0" expanded="true" />
+                <element signature="e#42177#42195#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -1250,7 +1259,7 @@
       <window_info id="Build Variants" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Gradle Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3287841" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Android" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.10545906" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Android" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.30397022" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Gradle" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -1342,23 +1351,31 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/Desktop/git/srs-sea/app/src/main/java/net/ossrs/sea/SrsHttpFlv.java">
+    <entry file="file://$USER_HOME$/Desktop/git/srs-sea/app/src/main/java/net/ossrs/sea/MainActivity.java">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="1039" column="33" selection-start-line="1039" selection-start-column="33" selection-end-line="1039" selection-end-column="33" />
+          <caret line="600" column="29" selection-start-line="600" selection-start-column="29" selection-end-line="600" selection-end-column="29" />
           <folding>
-            <element signature="e#38653#38671#0" expanded="true" />
-            <element signature="e#41669#41687#0" expanded="true" />
+            <element signature="imports" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/Desktop/git/srs-sea/app/src/main/java/net/ossrs/sea/MainActivity.java">
+    <entry file="file://$USER_HOME$/Desktop/git/srs-sea/app/src/main/java/net/ossrs/sea/SrsHttpFlv.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.2034632">
-          <caret line="596" column="44" selection-start-line="596" selection-start-column="44" selection-end-line="596" selection-end-column="44" />
+        <state vertical-scroll-proportion="0.4743083">
+          <caret line="336" column="32" selection-start-line="336" selection-start-column="32" selection-end-line="336" selection-end-column="32" />
           <folding>
-            <element signature="imports" expanded="false" />
+            <element signature="e#4532#4533#0" expanded="true" />
+            <element signature="e#4554#4555#0" expanded="true" />
+            <element signature="e#23766#23767#0" expanded="true" />
+            <element signature="e#23825#23826#0" expanded="true" />
+            <element signature="e#23862#23863#0" expanded="true" />
+            <element signature="e#23921#23922#0" expanded="true" />
+            <element signature="e#35343#35344#0" expanded="true" />
+            <element signature="e#35386#35387#0" expanded="true" />
+            <element signature="e#39161#39179#0" expanded="true" />
+            <element signature="e#42177#42195#0" expanded="true" />
           </folding>
         </state>
       </provider>

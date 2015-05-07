@@ -3,23 +3,29 @@ The SEA(Stream Encoder for Android) publish live stream to SRS over HTTP-FLV.
 
 ## Download
 
-The latest dev apk http://ossrs.net/apks/sea.latest.apk
+The latest dev apk http://ossrs.net/apks/sea.latest.apk, or scan the below code:<br/>
+![SEA APK](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.png?v=0)
 
 ## Usage
 
 The step to use the SEA:
 
-1. Make sure your android is 4.1+, see [Requirements](https://github.com/simple-rtmp-server/srs-sea#requirements)
+1. [Optional] Make sure your android is 4.1+, see [Requirements](https://github.com/simple-rtmp-server/srs-sea#requirements)
+1. [Optional] Check your MediaCodec info, see [MediaCodec](https://github.com/simple-rtmp-server/srs-sea#mediacodec)
+1. <b>[Required]</b> Download the [SEA apk](https://github.com/simple-rtmp-server/srs-sea#download).
+1. [Optional] Setup the SRS server refer to [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs), or use ossrs.net server, for instance, push `http://ossrs.net:8936/live/sea.flv`
+1. <b>[Required]</b> Play the [RTMP stream](http://www.ossrs.net/players/srs_player.html?vhost=hls&port=19351&stream=sea&server=ossrs.net&autostart=true)
+1. <b>[Required]</b> Play the [HLS stream](http://ossrs.net:8081/live/sea.html), or scan the below code:<br/>
+![SEA HLS stream](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.jpg?v=0)
 
-1. Download the apk from [SEA](http://ossrs.net/apks/sea.latest.apk)
+<b>Remark: Change the url if use your server, for instance:</b>
+```
+Publish: http://yourserver:8936/live/sea.flv
+RTMP URL: rtmp://yourserver:1935/live/sea
+HLS URL: http://yourserver:8080/live/sea.m3u8
+```
 
-1. Setup the SRS server refer to [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs), or use ossrs.net server, for instance, push `http://ossrs.net:8936/live/sea.flv`
-
-1. Play the [RTMP stream](http://www.ossrs.net/players/srs_player.html?vhost=hls&port=19351&stream=sea&server=ossrs.net&autostart=true)
-
-1. Play the [HLS stream](http://ossrs.net:8081/live/sea.html), or scan the below code:
-
-![SEA HLS stream](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.jpg)
+For more information about config of SRS, read [StreamCaster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs).
 
 ## Features
 
@@ -32,7 +38,12 @@ The step to use the SEA:
 
 Android SDK level 16+, Android 4.1, the JELLY_BEAN
 
-To show your android [media codec info](http://ossrs.net/apks/MediaCodecInfo.apk), read [more](https://coderoid.wordpress.com/2014/08/01/obtaining-android-media-codec-information/).
+## MediaCodec
+
+To show your android media codec info, [download the app](http://ossrs.net/apks/MediaCodecInfo.apk), or scan the below code:<br/>
+![MEDIACODEC APK](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.mediacodec.png?v=0)
+
+About more information please read [more](https://coderoid.wordpress.com/2014/08/01/obtaining-android-media-codec-information/).
 
 ## WorkFlow
 
