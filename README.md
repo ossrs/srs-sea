@@ -3,7 +3,8 @@ The SEA(Stream Encoder for Android) publish live stream to SRS over HTTP-FLV.
 
 ## Download
 
-The latest dev apk http://ossrs.net/apks/sea.latest.apk
+The latest dev apk http://ossrs.net/apks/sea.latest.apk, or scan the below code:<br/>
+![SEA APK](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.png?v=0)
 
 ## Usage
 
@@ -30,7 +31,10 @@ Android SDK level 16+, Android 4.1, the JELLY_BEAN
 
 ## MediaCodec
 
-To show your android media codec info, [download the app](http://ossrs.net/apks/MediaCodecInfo.apk), more information please read [more](https://coderoid.wordpress.com/2014/08/01/obtaining-android-media-codec-information/).
+To show your android media codec info, [download the app](http://ossrs.net/apks/MediaCodecInfo.apk), or scan the below code:<br/>
+![MEDIACODEC APK](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.mediacodec.png?v=0)
+
+About more information please read [more](https://coderoid.wordpress.com/2014/08/01/obtaining-android-media-codec-information/).
 
 ## WorkFlow
 
