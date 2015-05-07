@@ -30,7 +30,7 @@ Android SDK level 16+, Android 4.1, the JELLY_BEAN
 
 ## MediaCodec
 
-To show your android [media codec info](http://ossrs.net/apks/MediaCodecInfo.apk), read [more](https://coderoid.wordpress.com/2014/08/01/obtaining-android-media-codec-information/).
+To show your android media codec info, [download the app]net/apks/MediaCodecInfo.apk), more information please read [more](https://coderoid.wordpress.com/2014/08/01/obtaining-android-media-codec-information/).
 
 ## WorkFlow
 
