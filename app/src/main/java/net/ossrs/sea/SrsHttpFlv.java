@@ -33,6 +33,7 @@ public class SrsHttpFlv {
     private Handler handler;
 
     private SrsFlv flv;
+    private boolean sendSequenceHeader;
     private SrsFlvFrame videoSequenceHeader;
     private SrsFlvFrame audioSequenceHeader;
 
@@ -53,6 +54,7 @@ public class SrsHttpFlv {
     public SrsHttpFlv(String path, int format) {
         nb_videos = 0;
         nb_audios = 0;
+        sendSequenceHeader = false;
 
         url = path;
         flv = new SrsFlv();
@@ -247,8 +249,7 @@ public class SrsHttpFlv {
         bos.flush();
         Log.i(TAG, String.format("worker: flv header ok."));
 
-        sendFlvTag(bos, videoSequenceHeader);
-        sendFlvTag(bos, audioSequenceHeader);
+        sendSequenceHeader = true;
     }
 
     private void cycle() throws Exception {
@@ -274,6 +275,22 @@ public class SrsHttpFlv {
                 }
 
                 try {
+                    // when sequence header required,
+                    // adjust the dts by the current frame and sent it.
+                    if (sendSequenceHeader) {
+                        if (videoSequenceHeader != null) {
+                            videoSequenceHeader.dts = frame.dts;
+                        }
+
+                        if (audioSequenceHeader != null) {
+                            audioSequenceHeader.dts = frame.dts;
+                        }
+
+                        sendFlvTag(bos, audioSequenceHeader);
+                        sendFlvTag(bos, videoSequenceHeader);
+                        sendSequenceHeader = false;
+                    }
+
                     // try to send, igore when not connected.
                     sendFlvTag(bos, frame);
                 } catch (Exception e) {

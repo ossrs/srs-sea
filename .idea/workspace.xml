@@ -55,19 +55,19 @@
       <file leaf-file-name="SrsHttpFlv.java" pinned="false" current-in-tab="true">
         <entry file="file://$USER_HOME$/Desktop/git/srs-sea/app/src/main/java/net/ossrs/sea/SrsHttpFlv.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.4743083">
-              <caret line="336" column="32" selection-start-line="336" selection-start-column="32" selection-end-line="336" selection-end-column="32" />
+            <state vertical-scroll-proportion="0.510101">
+              <caret line="288" column="61" selection-start-line="288" selection-start-column="61" selection-end-line="288" selection-end-column="61" />
               <folding>
-                <element signature="e#4532#4533#0" expanded="true" />
-                <element signature="e#4554#4555#0" expanded="true" />
-                <element signature="e#23766#23767#0" expanded="true" />
-                <element signature="e#23825#23826#0" expanded="true" />
-                <element signature="e#23862#23863#0" expanded="true" />
-                <element signature="e#23921#23922#0" expanded="true" />
-                <element signature="e#35343#35344#0" expanded="true" />
-                <element signature="e#35386#35387#0" expanded="true" />
-                <element signature="e#39161#39179#0" expanded="true" />
-                <element signature="e#42177#42195#0" expanded="true" />
+                <element signature="e#4608#4609#0" expanded="true" />
+                <element signature="e#4630#4631#0" expanded="true" />
+                <element signature="e#24458#24459#0" expanded="true" />
+                <element signature="e#24517#24518#0" expanded="true" />
+                <element signature="e#24554#24555#0" expanded="true" />
+                <element signature="e#24613#24614#0" expanded="true" />
+                <element signature="e#36035#36036#0" expanded="true" />
+                <element signature="e#36078#36079#0" expanded="true" />
+                <element signature="e#39853#39871#0" expanded="true" />
+                <element signature="e#42869#42887#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -1259,7 +1259,7 @@
       <window_info id="Build Variants" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Gradle Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3287841" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Android" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.30397022" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Android" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.19478908" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Gradle" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -1289,7 +1289,7 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="1" />
+      <option name="time" value="4" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -1363,19 +1363,19 @@
     </entry>
     <entry file="file://$USER_HOME$/Desktop/git/srs-sea/app/src/main/java/net/ossrs/sea/SrsHttpFlv.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.4743083">
-          <caret line="336" column="32" selection-start-line="336" selection-start-column="32" selection-end-line="336" selection-end-column="32" />
+        <state vertical-scroll-proportion="0.510101">
+          <caret line="288" column="61" selection-start-line="288" selection-start-column="61" selection-end-line="288" selection-end-column="61" />
           <folding>
-            <element signature="e#4532#4533#0" expanded="true" />
-            <element signature="e#4554#4555#0" expanded="true" />
-            <element signature="e#23766#23767#0" expanded="true" />
-            <element signature="e#23825#23826#0" expanded="true" />
-            <element signature="e#23862#23863#0" expanded="true" />
-            <element signature="e#23921#23922#0" expanded="true" />
-            <element signature="e#35343#35344#0" expanded="true" />
-            <element signature="e#35386#35387#0" expanded="true" />
-            <element signature="e#39161#39179#0" expanded="true" />
-            <element signature="e#42177#42195#0" expanded="true" />
+            <element signature="e#4608#4609#0" expanded="true" />
+            <element signature="e#4630#4631#0" expanded="true" />
+            <element signature="e#24458#24459#0" expanded="true" />
+            <element signature="e#24517#24518#0" expanded="true" />
+            <element signature="e#24554#24555#0" expanded="true" />
+            <element signature="e#24613#24614#0" expanded="true" />
+            <element signature="e#36035#36036#0" expanded="true" />
+            <element signature="e#36078#36079#0" expanded="true" />
+            <element signature="e#39853#39871#0" expanded="true" />
+            <element signature="e#42869#42887#0" expanded="true" />
           </folding>
         </state>
       </provider>
