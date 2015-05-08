@@ -54,6 +54,8 @@ The workflow of the android publisher is:
 1. Remux the annexb to flv stream.
 1. HTTP POST the flv stream to SRS.
 
+For more information, read the [blog](http://blog.csdn.net/win_lin/article/details/45422375).
+
 ## Low Latency
 
 The latency is same to RTMP, 0.8s in lan and 3-5s in wan.
