@@ -165,10 +165,22 @@ public class SrsHttpFlv {
             }
             worker = null;
         }
+
+        if (bos != null) {
+            try {
+                bos.close();
+            } catch (IOException e) {
+                Log.i(TAG, "worker: close bos failed.");
+                e.printStackTrace();
+            }
+            bos = null;
+        }
+
         if (conn != null) {
             conn.disconnect();
             conn = null;
         }
+
         Log.i(TAG, String.format("worker: muxer closed, url=%s", url));
     }
 
