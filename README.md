@@ -72,6 +72,14 @@ CPU 13% for publishing live to SRS over HTTP FLV, bitrate is 800kbps, fps is 25 
 
 CPU 6% for publishing live to SRS over HTTP FLV, bitrate is 125kbps, fps is 15 and gop is 5s.
 
+## Supported Devices
+
+The following android device is test ok, others should be ok.
+
+| Company | Band     |  Android | Codec |
+| ------- | ------   | -------  | ----- |
+| Huawei  | AscendG7 | 4.4      | qcom  |
+
 ## Links
 
 Projects from SRS-ORG:
