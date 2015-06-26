@@ -79,6 +79,7 @@ The following android device is test ok, others should be ok.
 | Company | Band     |  Android | Codec |
 | ------- | ------   | -------  | ----- |
 | Huawei  | AscendG7 | 4.4      | qcom  |
+| Huawei  | Honor6   | 4.4      | -     |
 
 ## Links
 
