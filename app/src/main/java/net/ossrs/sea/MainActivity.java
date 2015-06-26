@@ -693,7 +693,8 @@ public class MainActivity extends Activity {
             Log.i(TAG, String.format("vencoder %s supports color fomart 0x%x(%d)", vmci.getName(), cf, cf));
 
             // choose YUV for h.264, prefer the bigger one.
-            if ((cf >= cc.COLOR_FormatYUV411Planar && cf <= cc.COLOR_FormatYUV422SemiPlanar)) {
+			// corresponding to the color space transform in onPreviewFrame
+            if ((cf >= cc.COLOR_FormatYUV420Planar && cf <= cc.COLOR_FormatYUV420SemiPlanar)) {
                 if (cf > matchedColorFormat) {
                     matchedColorFormat = cf;
                 }
