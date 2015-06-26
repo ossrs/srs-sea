@@ -20,12 +20,21 @@
         android:layout_toRightOf="@+id/capture"
         android:layout_marginTop="0dp" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="v0.0.1"
+        android:id="@+id/txt_version"
+        android:layout_toRightOf="@id/stop"
+        android:layout_marginTop="10dp" />
+
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="14dp"
         android:id="@+id/vbitrate"
-        android:layout_toRightOf="@+id/stop"
+        android:layout_toRightOf="@+id/txt_version"
         android:layout_marginTop="0dp"/>
 
     <EditText
