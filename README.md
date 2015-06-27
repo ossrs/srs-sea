@@ -81,6 +81,7 @@ The following android device is test ok, others should be ok.
 | Huawei  | AscendG7 | 4.4      | qcom  |
 | Huawei  | Honor6   | 4.4      | -     |
 | Huawei  | Mate7    | 4.4      | -     |
+| mi.com  | MI3      | 4.4      | nvidia|
 
 ## Links
 
