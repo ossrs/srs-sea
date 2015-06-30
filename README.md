@@ -38,6 +38,17 @@ For more information about config of SRS, read [StreamCaster](https://github.com
 
 Android SDK level 16+, Android 4.1, the JELLY_BEAN
 
+## Supported Devices
+
+The following android device is test ok, others should be ok.
+
+| Company | Band     |  Android | Codec |
+| ------- | ------   | -------  | ----- |
+| Huawei  | AscendG7 | 4.4      | qcom  |
+| Huawei  | Honor6   | 4.4      | -     |
+| Huawei  | Mate7    | 4.4      | -     |
+| mi.com  | MI3      | 4.4      | nvidia|
+
 ## MediaCodec
 
 To show your android media codec info, [download the app](http://ossrs.net/apks/MediaCodecInfo.apk), or scan the below code:<br/>
@@ -71,17 +82,6 @@ CPU 13% for publishing live to SRS over HTTP FLV, bitrate is 800kbps, fps is 25 
 ![125kbps](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.125kbps.jpg)
 
 CPU 6% for publishing live to SRS over HTTP FLV, bitrate is 125kbps, fps is 15 and gop is 5s.
-
-## Supported Devices
-
-The following android device is test ok, others should be ok.
-
-| Company | Band     |  Android | Codec |
-| ------- | ------   | -------  | ----- |
-| Huawei  | AscendG7 | 4.4      | qcom  |
-| Huawei  | Honor6   | 4.4      | -     |
-| Huawei  | Mate7    | 4.4      | -     |
-| mi.com  | MI3      | 4.4      | nvidia|
 
 ## Links
 
