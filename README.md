@@ -49,6 +49,7 @@ The following android device is test ok, others should be ok.
 | Huawei  | Mate7    | 4.4      | -     |
 | mi.com  | MI3      | 4.4      | nvidia|
 | 魅族    | mx4 pro  | 4.4.4    | exynos（三星）|
+| 三星Media | Galaxy Tab S T700 | 5.0.2 | exynos（三星）|
 
 Please [report](https://github.com/simple-rtmp-server/srs-sea/issues/8) your device if srs-sea is ok for your phone.
 
