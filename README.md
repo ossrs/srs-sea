@@ -13,7 +13,7 @@ The step to use the SEA:
 1. [Optional] Make sure your android is 4.1+, see [Requirements](https://github.com/simple-rtmp-server/srs-sea#requirements)
 1. [Optional] Check your MediaCodec info, see [MediaCodec](https://github.com/simple-rtmp-server/srs-sea#mediacodec)
 1. <b>[Required]</b> Download the [SEA apk](https://github.com/simple-rtmp-server/srs-sea#download).
-1. <b>[Required]</b> Push to ossrs.net `http://ossrs.net:8936/live/sea.flv`, or to your server, please read [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs).
+1. <b>[Required]</b> Push to ossrs.net `http://ossrs.net:8936/live/sea.flv`, or read [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs).
 1. <b>[Required]</b> Play the [RTMP stream](http://www.ossrs.net/players/srs_player.html?vhost=hls&port=19351&stream=sea&server=ossrs.net&autostart=true)
 1. <b>[Required]</b> Play the [HLS stream](http://ossrs.net:8081/live/sea.html), or scan the below code:<br/>
 ![SEA HLS stream](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.jpg?v=0)
