@@ -21,6 +21,31 @@ import java.util.Comparator;
  * to POST the h.264/avc annexb frame to SRS over HTTP FLV.
  * @remark we must start a worker thread to send data to server.
  * @see android.media.MediaMuxer https://developer.android.com/reference/android/media/MediaMuxer.html
+ *
+ * Usage:
+ *      muxer = new SrsHttpFlv("http://ossrs.net:8936/live/sea.flv", SrsHttpFlv.OutputFormat.MUXER_OUTPUT_HTTP_FLV);
+ *      muxer.start();
+ *
+ *      MediaFormat aformat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, asample_rate, achannel);
+ *      // setup the aformat for audio.
+ *      atrack = muxer.addTrack(aformat);
+ *
+ *      MediaFormat vformat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, vsize.width, vsize.height);
+ *      // setup the vformat for video.
+ *      vtrack = muxer.addTrack(vformat);
+ *
+ *      // encode the video frame from camera by h.264 codec to es and bi,
+ *      // where es is the h.264 ES(element stream).
+ *      ByteBuffer es, MediaCodec.BufferInfo bi;
+ *      muxer.writeSampleData(vtrack, es, bi);
+ *
+ *      // encode the audio frame from microphone by aac codec to es and bi,
+ *      // where es is the aac ES(element stream).
+ *      ByteBuffer es, MediaCodec.BufferInfo bi;
+ *      muxer.writeSampleData(atrack, es, bi);
+ *
+ *      muxer.stop();
+ *      muxer.release();
  */
 public class SrsHttpFlv {
     private String url;
