@@ -52,6 +52,8 @@ The following android device is test ok, others should be ok.
 | mi.com  | MI3      | 4.4      | nvidia|
 | 魅族    | mx4 pro  | 4.4.4    | exynos（三星）|
 | 三星Media | Galaxy Tab S T700 | 5.0.2 | exynos（三星）|
+|酷派     |大神F2-8297|4.4.2    |MTK（联发科）|
+|小米     |mi-4c     |5.1.1     |qcom|
 
 Please [report](https://github.com/simple-rtmp-server/srs-sea/issues/8) your device if srs-sea is ok for your phone.
 
