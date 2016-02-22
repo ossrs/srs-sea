@@ -4,20 +4,20 @@ The SEA(Stream Encoder for Android) publish live stream to SRS over HTTP-FLV.
 ## Download
 
 The latest dev apk http://ossrs.net/apks/sea.latest.apk, or scan the below code:<br/>
-![SEA APK](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.png?v=0)
+![SEA APK](https://github.com/ossrs/srs-sea/wiki/images/ap.sea.png?v=0)
 
 ## Usage
 
 The step to use the SEA:
 
-1. [Optional] Make sure your android is 4.1+, see [Requirements](https://github.com/simple-rtmp-server/srs-sea#requirements)
-1. [Optional] Check your MediaCodec info, see [MediaCodec](https://github.com/simple-rtmp-server/srs-sea#mediacodec)
-1. <b>[Required]</b> Download the [SEA apk](https://github.com/simple-rtmp-server/srs-sea#download).
-1. <b>[Required]</b> Push to ossrs.net `http://ossrs.net:8936/live/sea.flv`, or read [Stream Caster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs).
+1. [Optional] Make sure your android is 4.1+, see [Requirements](https://github.com/ossrs/srs-sea#requirements)
+1. [Optional] Check your MediaCodec info, see [MediaCodec](https://github.com/ossrs/srs-sea#mediacodec)
+1. <b>[Required]</b> Download the [SEA apk](https://github.com/ossrs/srs-sea#download).
+1. <b>[Required]</b> Push to ossrs.net `http://ossrs.net:8936/live/sea.flv`, or read [Stream Caster](https://github.com/ossrs/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs).
 1. <b>[Required]</b> Play the [RTMP stream](http://www.ossrs.net/players/srs_player.html?vhost=hls&port=19351&stream=sea&server=ossrs.net&autostart=true)
 1. <b>[Required]</b> Play the [FLV stream](http://www.ossrs.net/players/srs_player.html?vhost=ossrs.net&app=live&stream=sea.flv&server=ossrs.net&port=8081&schema=http&autostart=true)
 1. <b>[Required]</b> Play the [HLS stream](http://ossrs.net:8081/live/sea.html), or scan the below code:<br/>
-![SEA HLS stream](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.sea.jpg?v=0)
+![SEA HLS stream](https://github.com/ossrs/srs-sea/wiki/images/ap.sea.jpg?v=0)
 
 <b>Remark: Change the url if use your server, for instance:</b>
 ```
@@ -27,13 +27,13 @@ FLV URL: http://yourserver:8080/live/sea.flv
 HLS URL: http://yourserver:8080/live/sea.m3u8
 ```
 
-For more information about config of SRS, read [StreamCaster](https://github.com/simple-rtmp-server/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs).
+For more information about config of SRS, read [StreamCaster](https://github.com/ossrs/srs/wiki/v2_CN_Streamer#push-http-flv-to-srs).
 
 ## Features
 
 * Only java files, without any native code.
 * Realtime live streaming, similar to RTMP.
-* Stable for POST HTTP FLV stream to [SRS](https://github.com/simple-rtmp-server/srs).
+* Stable for POST HTTP FLV stream to [SRS](https://github.com/ossrs/srs).
 * Hardware encoding with low cpu usage.
 
 ## Requirements
@@ -55,12 +55,12 @@ The following android device is test ok, others should be ok.
 |酷派     |大神F2-8297|4.4.2    |MTK（联发科）|
 |小米     |mi-4c     |5.1.1     |qcom|
 
-Please [report](https://github.com/simple-rtmp-server/srs-sea/issues/8) your device if srs-sea is ok for your phone.
+Please [report](https://github.com/ossrs/srs-sea/issues/8) your device if srs-sea is ok for your phone.
 
 ## MediaCodec
 
 To show your android media codec info, [download the app](http://ossrs.net/apks/MediaCodecInfo.apk), or scan the below code:<br/>
-![MEDIACODEC APK](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.mediacodec.png?v=0)
+![MEDIACODEC APK](https://github.com/ossrs/srs-sea/wiki/images/ap.mediacodec.png?v=0)
 
 About more information please read [more](https://coderoid.wordpress.com/2014/08/01/obtaining-android-media-codec-information/).
 
@@ -79,15 +79,15 @@ For more information, read the [blog](http://blog.csdn.net/win_lin/article/detai
 
 The latency is same to RTMP, 0.8s in lan and 3-5s in wan.
 
-![0.8s latency](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.delay1.jpg)
+![0.8s latency](https://github.com/ossrs/srs-sea/wiki/images/ap.delay1.jpg)
 
 ## Lightweight
 
-![800kbps](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.800kbps.jpg)
+![800kbps](https://github.com/ossrs/srs-sea/wiki/images/ap.800kbps.jpg)
 
 CPU 13% for publishing live to SRS over HTTP FLV, bitrate is 800kbps, fps is 25 and gop is 10s.
 
-![125kbps](https://github.com/simple-rtmp-server/srs-sea/wiki/images/ap.125kbps.jpg)
+![125kbps](https://github.com/ossrs/srs-sea/wiki/images/ap.125kbps.jpg)
 
 CPU 6% for publishing live to SRS over HTTP FLV, bitrate is 125kbps, fps is 15 and gop is 5s.
 
@@ -95,10 +95,10 @@ CPU 6% for publishing live to SRS over HTTP FLV, bitrate is 125kbps, fps is 15 a
 
 Projects from SRS-ORG:
 
-* SRS: https://github.com/simple-rtmp-server/srs
-* SRS-BLE(pc encoder): https://github.com/simple-rtmp-server/srs-ble
-* SRS-SEA(android encoder): https://github.com/simple-rtmp-server/srs-sea
-* SRS-SPA(player): https://github.com/simple-rtmp-server/srs-spa
-* SRS-DOCKER: https://github.com/simple-rtmp-server/srs-docker
+* SRS: https://github.com/ossrs/srs
+* SRS-BLE(pc encoder): https://github.com/ossrs/srs-ble
+* SRS-SEA(android encoder): https://github.com/ossrs/srs-sea
+* SRS-SPA(player): https://github.com/ossrs/srs-spa
+* SRS-DOCKER: https://github.com/ossrs/srs-docker
 
 Winlin 2015.5
