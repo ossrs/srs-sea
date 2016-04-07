@@ -100,5 +100,6 @@ Projects from SRS-ORG:
 * SRS-SEA(android encoder): https://github.com/ossrs/srs-sea
 * SRS-SPA(player): https://github.com/ossrs/srs-spa
 * SRS-DOCKER: https://github.com/ossrs/srs-docker
+* YASEA(SEA over RTMP): https://github.com/begeekmyfriend/yasea
 
 Winlin 2015.5
