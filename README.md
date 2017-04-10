@@ -1,6 +1,8 @@
 # SEA
 The SEA(Stream Encoder for Android) publish live stream to SRS over HTTP-FLV.
 
+> Remark: Please use [YASEA](https://github.com/begeekmyfriend/yasea) instead.
+
 ## Download
 
 The latest dev apk http://ossrs.net/apks/sea.latest.apk, or scan the below code:<br/>
