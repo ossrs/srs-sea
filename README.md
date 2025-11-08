@@ -1,5 +1,7 @@
 # SRS-SEA
 
+**IMPORTANT NOTE**: This repository is deprecated and archived, please use [srs-rn](https://github.com/ossrs/srs-rn) instead. srs-rn is the future of client project for SRS and Oryx.
+
 Recommand to use [YASEA](https://github.com/begeekmyfriend/yasea),
 because SEA is just a demo of encoder for Android.
 
